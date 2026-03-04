@@ -1,9 +1,9 @@
 import type { RepoDetectionCandidate, RepoResolutionResult } from '../types'
 import { execFile } from 'node:child_process'
+import { readFile, stat } from 'node:fs/promises'
 import process from 'node:process'
 import { promisify } from 'node:util'
 import { cancel, isCancel, select } from '@clack/prompts'
-import { exists, readTextFile } from '../utils/fs'
 
 const execFileAsync = promisify(execFile)
 
@@ -149,12 +149,12 @@ async function detectRepoFromGit(cwd: string): Promise<RepoDetectionCandidate | 
 
 async function detectRepoFromPackageJson(cwd: string): Promise<RepoDetectionCandidate | undefined> {
   const path = `${cwd}/package.json`
-  if (!await exists(path))
+  if (!await pathExists(path))
     return undefined
 
   let parsed: unknown
   try {
-    parsed = JSON.parse(await readTextFile(path))
+    parsed = JSON.parse(await readFile(path, 'utf8'))
   }
   catch {
     return undefined
@@ -191,6 +191,16 @@ async function detectRepoFromPackageJson(cwd: string): Promise<RepoDetectionCand
   }
 
   return undefined
+}
+
+async function pathExists(path: string): Promise<boolean> {
+  try {
+    await stat(path)
+    return true
+  }
+  catch {
+    return false
+  }
 }
 
 function prioritizeRemotes(remotes: string[]): string[] {

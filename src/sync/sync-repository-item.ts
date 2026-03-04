@@ -1,11 +1,13 @@
 import type { GitHubIssue, ItemSyncStats, PatchPlan, SyncContext } from './sync-repository-types'
-import { writeTextFile } from '../utils/fs'
+import { mkdir, writeFile } from 'node:fs/promises'
+import { dirname } from 'node:path'
 import { renderIssueMarkdown } from './markdown'
 import { downloadPullPatch, fetchIssueComments, getPullMetadata } from './sync-repository-github'
 import {
   handleClosedIssueByPolicy,
   moveMarkdownByState,
   removePatchIfExists,
+  removeStaleMarkdownFiles,
   resolveIssuePaths,
   shouldSkipIssueSync,
   updateTrackedItem,
@@ -16,7 +18,8 @@ export async function syncIssueCandidate(context: SyncContext, issue: GitHubIssu
   const number = issue.number
   const kind = issue.pull_request ? 'pull' : 'issue'
   const state = issue.state === 'closed' ? 'closed' : 'open'
-  const paths = await resolveIssuePaths(context.storageDirAbsolute, number, state)
+  const tracked = context.syncState.items[String(number)]
+  const paths = await resolveIssuePaths(context.storageDirAbsolute, kind, number, issue.title, state, tracked?.filePath)
 
   const closedDecision = await handleClosedIssueByPolicy({
     context,
@@ -29,12 +32,12 @@ export async function syncIssueCandidate(context: SyncContext, issue: GitHubIssu
     return closedDecision
 
   const patchPlan = resolvePatchPlan(context.config.sync.patches, kind, state)
-  const tracked = context.syncState.items[String(number)]
 
   if (await shouldSkipIssueSync(tracked, issue.updated_at, paths, patchPlan)) {
     let patchesDeleted = 0
     if (patchPlan.shouldDeletePatch)
       patchesDeleted += await removePatchIfExists(context.storageDirAbsolute, number)
+    await removeStaleMarkdownFiles(paths)
     updateTrackedItem(context, number, kind, state, issue.updated_at, paths.targetPath, patchPlan.shouldWritePatch ? paths.patchPath : undefined)
     return {
       written: 0,
@@ -75,7 +78,8 @@ export async function syncIssueCandidate(context: SyncContext, issue: GitHubIssu
   })
 
   const moved = await moveMarkdownByState(paths, state)
-  await writeTextFile(paths.targetPath, markdown)
+  await writeFileEnsured(paths.targetPath, markdown)
+  await removeStaleMarkdownFiles(paths)
 
   const patchStats = await syncPatchByPlan(context, number, paths.patchPath, patchPlan)
   updateTrackedItem(context, number, kind, state, issue.updated_at, paths.targetPath, patchPlan.shouldWritePatch ? paths.patchPath : undefined)
@@ -99,7 +103,7 @@ async function syncPatchByPlan(
 
   if (patchPlan.shouldWritePatch) {
     const patch = await downloadPullPatch(context.octokit, context.owner, context.repo, number)
-    await writeTextFile(patchPath, patch)
+    await writeFileEnsured(patchPath, patch)
     patchesWritten += 1
   }
 
@@ -110,4 +114,9 @@ async function syncPatchByPlan(
     patchesWritten,
     patchesDeleted,
   }
+}
+
+async function writeFileEnsured(path: string, content: string): Promise<void> {
+  await mkdir(dirname(path), { recursive: true })
+  await writeFile(path, content, 'utf8')
 }

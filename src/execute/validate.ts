@@ -1,7 +1,8 @@
 import type { PendingFile, PendingOp } from './types'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { dirname } from 'node:path'
 import * as v from 'valibot'
 import { parse, stringify } from 'yaml'
-import { readTextFile, writeTextFile } from '../utils/fs'
 
 const ACTIONS = [
   'close',
@@ -43,7 +44,7 @@ const executeOpSchema = v.looseObject({
 const executeFileSchema = v.array(executeOpSchema)
 
 export async function readAndValidateExecuteFile(path: string): Promise<PendingFile> {
-  const raw = await readTextFile(path)
+  const raw = await readFile(path, 'utf8')
   let parsed: unknown
   try {
     parsed = parse(raw)
@@ -73,7 +74,8 @@ export async function readAndValidateExecuteFile(path: string): Promise<PendingF
 
 export async function writeExecuteFile(path: string, pending: PendingFile): Promise<void> {
   const content = stringify(pending)
-  await writeTextFile(path, content.endsWith('\n') ? content : `${content}\n`)
+  await mkdir(dirname(path), { recursive: true })
+  await writeFile(path, content.endsWith('\n') ? content : `${content}\n`, 'utf8')
 }
 
 export function validateExecuteRules(pending: PendingFile): string[] {

@@ -1,21 +1,30 @@
 import type { SyncItemState, SyncState } from '../types'
 import type { ClosedIssuePolicyInput, IssuePaths, ItemSyncStats, PatchPlan, SyncContext } from './sync-repository-types'
-import { rm } from 'node:fs/promises'
-import { ensureDir, exists, moveFile, removeFile } from '../utils/fs'
-import { getClosedIssueMarkdownPath, getClosedIssuesDir, getIssueMarkdownPath, getIssuesDir, getPrPatchPath } from './paths'
+import { mkdir, rename, rm, stat } from 'node:fs/promises'
+import { dirname, isAbsolute, join } from 'node:path'
+import {
+  getClosedIssuesDir,
+  getClosedPullsDir,
+  getItemMarkdownPath,
+  getPrPatchPath,
+} from './paths'
 import { relativeToStorage, shouldSyncKind } from './sync-repository-utils'
 
-export async function ensureStorageStructure(storageDirAbsolute: string): Promise<void> {
-  await ensureDir(getIssuesDir(storageDirAbsolute))
-  await ensureDir(getClosedIssuesDir(storageDirAbsolute))
-}
-
-export async function resolveIssuePaths(storageDirAbsolute: string, number: number, state: 'open' | 'closed'): Promise<IssuePaths> {
-  const closedPath = getClosedIssueMarkdownPath(storageDirAbsolute, number)
-  const openPath = getIssueMarkdownPath(storageDirAbsolute, number, 'open')
-  const hasClosedFile = await exists(closedPath)
-  const hasOpenFile = await exists(openPath)
-  const targetPath = getIssueMarkdownPath(storageDirAbsolute, number, state)
+export async function resolveIssuePaths(
+  storageDirAbsolute: string,
+  kind: 'issue' | 'pull',
+  number: number,
+  title: string,
+  state: 'open' | 'closed',
+  trackedFilePath?: string,
+): Promise<IssuePaths> {
+  const closedPath = getItemMarkdownPath(storageDirAbsolute, kind, number, 'closed', title)
+  const openPath = getItemMarkdownPath(storageDirAbsolute, kind, number, 'open', title)
+  const hasClosedFile = await pathExists(closedPath)
+  const hasOpenFile = await pathExists(openPath)
+  const trackedPath = resolveTrackedPath(storageDirAbsolute, trackedFilePath)
+  const hasTrackedFile = trackedPath ? await pathExists(trackedPath) : false
+  const targetPath = getItemMarkdownPath(storageDirAbsolute, kind, number, state, title)
   const hasTargetFile = state === 'open' ? hasOpenFile : hasClosedFile
 
   return {
@@ -23,9 +32,11 @@ export async function resolveIssuePaths(storageDirAbsolute: string, number: numb
     closedPath,
     targetPath,
     patchPath: getPrPatchPath(storageDirAbsolute, number),
+    trackedPath,
     hasOpenFile,
     hasClosedFile,
-    hasLocalFile: hasOpenFile || hasClosedFile,
+    hasTrackedFile,
+    hasLocalFile: hasOpenFile || hasClosedFile || hasTrackedFile,
     hasTargetFile,
   }
 }
@@ -36,10 +47,8 @@ export async function handleClosedIssueByPolicy(input: ClosedIssuePolicyInput): 
     return undefined
 
   if (context.config.sync.closed === false) {
-    if (paths.hasOpenFile)
-      await removeFile(paths.openPath)
-    if (paths.hasClosedFile)
-      await removeFile(paths.closedPath)
+    for (const markdownPath of getExistingMarkdownPaths(paths))
+      await removePath(markdownPath)
 
     let patchesDeleted = 0
     if (kind === 'pull')
@@ -85,23 +94,76 @@ export async function shouldSkipIssueSync(
     return false
 
   if (patchPlan.shouldWritePatch)
-    return await exists(paths.patchPath)
+    return await pathExists(paths.patchPath)
 
   return true
 }
 
 export async function moveMarkdownByState(paths: IssuePaths, state: 'open' | 'closed'): Promise<number> {
-  if (state === 'open' && paths.hasClosedFile) {
-    await moveFile(paths.closedPath, paths.openPath)
-    return 1
+  const sourcePath = resolveMoveSourcePath(paths, state)
+  if (!sourcePath)
+    return 0
+  if (sourcePath === paths.targetPath)
+    return 0
+
+  if (await pathExists(paths.targetPath)) {
+    await removePath(sourcePath)
+    return 0
   }
 
-  if (state === 'closed' && paths.hasOpenFile) {
-    await moveFile(paths.openPath, paths.closedPath)
-    return 1
-  }
+  await movePath(sourcePath, paths.targetPath)
+  return 1
+}
 
-  return 0
+export async function removeStaleMarkdownFiles(paths: IssuePaths): Promise<void> {
+  for (const markdownPath of getExistingMarkdownPaths(paths)) {
+    if (markdownPath === paths.targetPath)
+      continue
+    await removePath(markdownPath)
+  }
+}
+
+function resolveMoveSourcePath(paths: IssuePaths, state: 'open' | 'closed'): string | undefined {
+  if (paths.hasTrackedFile && paths.trackedPath && paths.trackedPath !== paths.targetPath)
+    return paths.trackedPath
+
+  if (state === 'open' && paths.hasClosedFile && paths.closedPath !== paths.targetPath)
+    return paths.closedPath
+  if (state === 'closed' && paths.hasOpenFile && paths.openPath !== paths.targetPath)
+    return paths.openPath
+
+  const openPathIsMovable = paths.hasOpenFile && paths.openPath !== paths.targetPath
+  if (openPathIsMovable)
+    return paths.openPath
+
+  const closedPathIsMovable = paths.hasClosedFile && paths.closedPath !== paths.targetPath
+  if (closedPathIsMovable)
+    return paths.closedPath
+
+  return undefined
+}
+
+function getExistingMarkdownPaths(paths: IssuePaths): string[] {
+  const markdownPaths = new Set<string>()
+  if (paths.hasOpenFile)
+    markdownPaths.add(paths.openPath)
+  if (paths.hasClosedFile)
+    markdownPaths.add(paths.closedPath)
+  if (paths.hasTrackedFile && paths.trackedPath)
+    markdownPaths.add(paths.trackedPath)
+  return [...markdownPaths]
+}
+
+function resolveTrackedPath(storageDirAbsolute: string, trackedFilePath: string | undefined): string | undefined {
+  if (!trackedFilePath)
+    return undefined
+  if (isAbsolute(trackedFilePath))
+    return trackedFilePath
+  return join(storageDirAbsolute, trackedFilePath)
+}
+
+function resolveTrackedPathOrJoin(storageDirAbsolute: string, trackedFilePath: string): string {
+  return resolveTrackedPath(storageDirAbsolute, trackedFilePath) ?? join(storageDirAbsolute, trackedFilePath)
 }
 
 export function updateTrackedItem(
@@ -125,8 +187,10 @@ export function updateTrackedItem(
 }
 
 export async function pruneTrackedClosedItems(storageDirAbsolute: string, syncState: SyncState, sync: SyncContext['config']['sync']): Promise<number> {
-  await rm(getClosedIssuesDir(storageDirAbsolute), { recursive: true, force: true })
-  await ensureDir(getClosedIssuesDir(storageDirAbsolute))
+  if (sync.issues)
+    await rm(getClosedIssuesDir(storageDirAbsolute), { recursive: true, force: true })
+  if (sync.pulls)
+    await rm(getClosedPullsDir(storageDirAbsolute), { recursive: true, force: true })
 
   let patchesDeleted = 0
   for (const item of Object.values(syncState.items)) {
@@ -134,6 +198,7 @@ export async function pruneTrackedClosedItems(storageDirAbsolute: string, syncSt
       continue
     if (!shouldSyncKind(sync, item.kind))
       continue
+    await removePath(resolveTrackedPathOrJoin(storageDirAbsolute, item.filePath))
     if (item.kind === 'pull')
       patchesDeleted += await removePatchIfExists(storageDirAbsolute, item.number)
     delete syncState.items[String(item.number)]
@@ -153,7 +218,7 @@ export async function pruneMissingOpenTrackedItems(storageDirAbsolute: string, s
     if (openNumbers.has(item.number))
       continue
 
-    await removeFile(getIssueMarkdownPath(storageDirAbsolute, item.number, 'open'))
+    await removePath(resolveTrackedPathOrJoin(storageDirAbsolute, item.filePath))
     if (item.kind === 'pull')
       patchesDeleted += await removePatchIfExists(storageDirAbsolute, item.number)
     delete syncState.items[String(item.number)]
@@ -164,8 +229,27 @@ export async function pruneMissingOpenTrackedItems(storageDirAbsolute: string, s
 
 export async function removePatchIfExists(storageDirAbsolute: string, number: number): Promise<number> {
   const patchPath = getPrPatchPath(storageDirAbsolute, number)
-  if (!await exists(patchPath))
+  if (!await pathExists(patchPath))
     return 0
-  await removeFile(patchPath)
+  await removePath(patchPath)
   return 1
+}
+
+async function pathExists(path: string): Promise<boolean> {
+  try {
+    await stat(path)
+    return true
+  }
+  catch {
+    return false
+  }
+}
+
+async function removePath(path: string): Promise<void> {
+  await rm(path, { force: true })
+}
+
+async function movePath(from: string, to: string): Promise<void> {
+  await mkdir(dirname(to), { recursive: true })
+  await rename(from, to)
 }

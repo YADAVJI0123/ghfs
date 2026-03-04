@@ -71,15 +71,21 @@ Non-TTY with no token is a hard error.
   schema/
     execute.schema.json
   issues/
-    <number>.md              # open issue or PR
+    <00001-short-slug>.md    # open issue
+    closed/
+      <00001-short-slug>.md  # closed issue
+  pulls/
+    <00001-short-slug>.md    # open pull request
     <number>.patch           # PR patch (based on sync.patches)
     closed/
-      <number>.md            # closed issue or PR
+      <00001-short-slug>.md  # closed pull request
 ```
 
 Notes:
-- Issues and PRs share the same markdown directory tree (`issues/`).
-- PR patches are stored alongside open markdown files.
+- Issues and PRs use separate markdown trees (`issues/` and `pulls/`).
+- PR patches are stored under `pulls/`.
+- Markdown file names use `<number>-<slug>.md` with 5-digit zero-padding for `number` (example: `00134-some-bug.md`).
+- Slug generation rules: lowercase; replace non-`[a-z0-9]` runs with `-`; trim leading/trailing `-`; max length 48; fallback slug `item`.
 
 ## Mirror Markdown Contract
 Frontmatter fields include:
@@ -116,24 +122,28 @@ Backward compatibility:
 ## Sync Behavior
 High-level flow:
 1. Resolve repo + token.
-2. Ensure storage structure.
-3. Load `.sync.json` and compute `since` cursor (unless `--full` or targeted `numbers`).
-4. Fetch candidates:
+2. Load `.sync.json` and compute `since` cursor (unless `--full` or targeted `numbers`).
+3. Fetch candidates:
    - targeted: by issue/PR numbers
    - regular: paginated list
-5. Filter by `sync.issues` / `sync.pulls`.
-6. For each candidate:
+4. Filter by `sync.issues` / `sync.pulls`.
+5. For each candidate:
    - apply closed-policy handling (`sync.closed`)
    - compare `lastUpdatedAt` vs paginated `updated_at` and skip unchanged items
    - otherwise fetch comments (+ PR metadata if pull), render markdown, move paths as needed
    - manage patch write/delete from `sync.patches`
    - update tracked item state
-7. Persist `.sync.json` summary metadata and counters.
+6. Persist `.sync.json` summary metadata and counters.
+
+Directory creation behavior:
+- sync does not eagerly create `issues/` or `pulls/` trees at startup.
+- directories are created lazily when writing/moving markdown or patch files.
 
 Details:
 - `sync.closed === false` uses open-only pagination for full sync; incremental sync also requests recently closed items since cursor to clean up local mirror.
 - unchanged optimization skips expensive per-item re-sync when remote `updated_at` matches tracked `lastUpdatedAt` and required local files exist.
 - `sync.issues` / `sync.pulls` disable processing for that kind only. Disabled kinds are ignored; existing mirrored files for them are not aggressively deleted.
+- Sync keeps `filePath` in state and uses it to move/clean stale markdown files when title slug or open/closed state changes.
 
 ## Execute File Contract (`.ghfs/execute.yml`)
 Root must be a YAML array of operations.

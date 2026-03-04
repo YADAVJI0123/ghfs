@@ -20,9 +20,13 @@ It will sync the open issues and pull requests to the local filesystem under `.g
 ```txt
 .ghfs/
   issues/
-    <number>.md
+    00134-some-bug.md
+    closed/
+      00135-fixed-crash.md
   pulls/
-    <number>.md
+    00042-add-cache.md
+    closed/
+      00043-release-cleanup.md
     <number>.patch
 ```
 
@@ -58,7 +62,11 @@ ghfs execute
 
 to execute the operations in batch.
 
-> TODO: directly editing the `<number>.md` file to apply the operations will be rolled out in the future.
+When running `ghfs execute --apply`:
+- Each successfully applied operation is removed from `.ghfs/execute.yml`.
+- After execution, `ghfs` runs a targeted sync only for affected issue/PR numbers.
+
+> TODO: directly editing the `<5-digit-number>-<slug>.md` file to apply the operations will be rolled out in the future.
 
 ## Configuration
 
@@ -69,6 +77,10 @@ import type { GhfsUserConfig } from '@ghfs/cli'
 
 export default defineConfig({
   repo: 'owner/name',
+  sync: {
+    issues: true, // set false to skip issue sync
+    pulls: true, // set false to skip pull request sync
+  },
   // other options...
 })
 ```
@@ -76,7 +88,7 @@ export default defineConfig({
 ## TODOs
 
 - [ ] `execute.md` file with human-friendly instructions (`close #123 #234`, `set-title #125 "New title"`).
-- [ ] Directly editing the `<number>.md` file to apply the operations.
+- [ ] Directly editing the `<5-digit-number>-<slug>.md` file to apply the operations.
 - [ ] Add a VS Code extension for guided sync/execute.
 - [ ] Documentation.
 - [ ] Agent Skills.

@@ -1,8 +1,7 @@
 import type { ExecutionResult, SyncItemState, SyncState } from '../types'
-import { readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { SYNC_STATE_FILE_NAME } from '../constants'
-import { ensureDir } from '../utils/fs'
 
 export function getSyncStatePath(storageDirAbsolute: string): string {
   return join(storageDirAbsolute, SYNC_STATE_FILE_NAME)
@@ -57,7 +56,7 @@ function normalizeItems(items: Record<string, SyncItemState & { updatedAt?: stri
 }
 
 export async function saveSyncState(storageDirAbsolute: string, state: SyncState): Promise<void> {
-  await ensureDir(storageDirAbsolute)
+  await mkdir(storageDirAbsolute, { recursive: true })
   const path = getSyncStatePath(storageDirAbsolute)
   await writeFile(path, `${JSON.stringify(state, null, 2)}\n`, 'utf8')
 }

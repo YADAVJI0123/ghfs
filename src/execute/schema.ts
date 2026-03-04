@@ -1,6 +1,6 @@
-import { join } from 'node:path'
+import { mkdir, writeFile } from 'node:fs/promises'
+import { dirname, join } from 'node:path'
 import { EXECUTE_SCHEMA_RELATIVE_PATH } from '../constants'
-import { writeTextFile } from '../utils/fs'
 
 export const executeSchema = {
   $id: 'https://ghfs.dev/schema/execute.json',
@@ -64,7 +64,8 @@ export const executeSchema = {
 
 export async function writeExecuteSchema(storageDirAbsolute: string): Promise<string> {
   const schemaPath = getExecuteSchemaPath(storageDirAbsolute)
-  await writeTextFile(schemaPath, `${JSON.stringify(executeSchema, null, 2)}\n`)
+  await mkdir(dirname(schemaPath), { recursive: true })
+  await writeFile(schemaPath, `${JSON.stringify(executeSchema, null, 2)}\n`, 'utf8')
   return schemaPath
 }
 

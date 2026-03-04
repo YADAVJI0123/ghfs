@@ -9,6 +9,7 @@ export const CONFIG_FILE_CANDIDATES = [
 export const DEFAULT_STORAGE_DIR = '.ghfs'
 
 export const ISSUE_DIR_NAME = 'issues'
+export const PULL_DIR_NAME = 'pulls'
 export const CLOSED_DIR_NAME = 'closed'
 export const SYNC_STATE_FILE_NAME = '.sync.json'
 export const EXECUTE_SCHEMA_RELATIVE_PATH = 'schema/execute.schema.json'

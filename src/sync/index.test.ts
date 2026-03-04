@@ -23,7 +23,7 @@ describe('syncRepository', () => {
     const cwd = await mkdtemp(join(tmpdir(), 'ghfs-sync-index-test-'))
     const storageDir = join(cwd, '.ghfs')
     await mkdir(join(storageDir, 'issues'), { recursive: true })
-    await writeFile(join(storageDir, 'issues', '1.md'), '# existing\n', 'utf8')
+    await writeFile(join(storageDir, 'issues', '00001-issue-1.md'), '# existing\n', 'utf8')
     await writeFile(getSyncStatePath(storageDir), JSON.stringify({
       version: 1,
       lastSyncedAt: '2026-01-01T00:00:00.000Z',
@@ -34,7 +34,7 @@ describe('syncRepository', () => {
           state: 'open',
           lastUpdatedAt: '2026-01-10T00:00:00.000Z',
           lastSyncedAt: '2026-01-01T00:00:00.000Z',
-          filePath: 'issues/1.md',
+          filePath: 'issues/00001-issue-1.md',
         },
       },
       executions: [],
@@ -184,8 +184,8 @@ describe('syncRepository', () => {
     expect(commentCalls).toHaveLength(1)
     expect(commentCalls[0].params.issue_number).toBe(2)
 
-    await expect(stat(join(cwd, '.ghfs', 'issues', '1.md'))).rejects.toThrow()
-    await expect(stat(join(cwd, '.ghfs', 'issues', '2.md'))).resolves.toBeDefined()
+    await expect(stat(join(cwd, '.ghfs', 'issues', '00001-issue-1.md'))).rejects.toThrow()
+    await expect(stat(join(cwd, '.ghfs', 'pulls', '00002-pr-2.md'))).resolves.toBeDefined()
 
     await rm(cwd, { recursive: true, force: true })
   })

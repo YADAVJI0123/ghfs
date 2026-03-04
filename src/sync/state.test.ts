@@ -16,7 +16,7 @@ describe('loadSyncState', () => {
           kind: 'issue',
           state: 'open',
           updatedAt: '2026-01-03T00:00:00.000Z',
-          filePath: 'issues/123.md',
+          filePath: 'issues/00123-legacy-issue.md',
         },
       },
       executions: [],
@@ -29,7 +29,7 @@ describe('loadSyncState', () => {
       state: 'open',
       lastUpdatedAt: '2026-01-03T00:00:00.000Z',
       lastSyncedAt: '2026-01-01T00:00:00.000Z',
-      filePath: 'issues/123.md',
+      filePath: 'issues/00123-legacy-issue.md',
     })
 
     await rm(storageDir, { recursive: true, force: true })

@@ -5,7 +5,7 @@ import { createGitHubClient } from '../github/client'
 import { loadSyncState, saveSyncState } from './state'
 import { fetchIssueCandidatesByNumbers, fetchIssueCandidatesByPagination } from './sync-repository-github'
 import { syncIssueCandidate } from './sync-repository-item'
-import { ensureStorageStructure, pruneMissingOpenTrackedItems, pruneTrackedClosedItems } from './sync-repository-storage'
+import { pruneMissingOpenTrackedItems, pruneTrackedClosedItems } from './sync-repository-storage'
 import { addItemStats, createCounters, normalizeIssueNumbers, resolveSince, shouldSyncIssue, splitRepo } from './sync-repository-utils'
 
 export async function syncRepository(options: SyncOptions): Promise<SyncSummary> {
@@ -14,7 +14,6 @@ export async function syncRepository(options: SyncOptions): Promise<SyncSummary>
   const storageDirAbsolute = resolve(options.config.cwd, options.config.directory)
   const targetNumbers = normalizeIssueNumbers(options.numbers)
 
-  await ensureStorageStructure(storageDirAbsolute)
   const syncState = await loadSyncState(storageDirAbsolute)
   const since = targetNumbers ? undefined : resolveSince(options, syncState)
   const syncedAt = new Date().toISOString()
