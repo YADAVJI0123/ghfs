@@ -1,0 +1,3 @@
+[submodule "playgrounds/ni"]
+	path = playgrounds/ni
+	url = https://github.com/antfu-collective/ni
