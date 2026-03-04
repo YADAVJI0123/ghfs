@@ -21,6 +21,8 @@ describe('resolveConfig', () => {
     expect(getExecuteFile(config)).toBe('.ghfs/execute.yml')
     expect(config.auth.token).toBe('')
     expect(config.repo).toBe('')
+    expect(config.sync.issues).toBe(true)
+    expect(config.sync.pulls).toBe(true)
     expect(config.sync.closed).toBe('existing')
     expect(config.sync.patches).toBe('open')
   })
@@ -46,6 +48,8 @@ export default {
   directory: '.ghfs-data',
   auth: { token: '  test-token  ' },
   sync: {
+    issues: false,
+    pulls: true,
     closed: false,
     patches: 'all',
   },
@@ -57,6 +61,8 @@ export default {
     expect(config.directory).toBe('.ghfs-data')
     expect(getExecuteFile(config)).toBe('.ghfs-data/execute.yml')
     expect(config.auth.token).toBe('test-token')
+    expect(config.sync.issues).toBe(false)
+    expect(config.sync.pulls).toBe(true)
     expect(config.sync.closed).toBe(false)
     expect(config.sync.patches).toBe('all')
   })

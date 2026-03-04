@@ -5,6 +5,8 @@ export default {
     // token: process.env.GH_TOKEN,
   },
   sync: {
+    issues: true,
+    pulls: true,
     closed: 'existing',
     patches: 'open',
   },

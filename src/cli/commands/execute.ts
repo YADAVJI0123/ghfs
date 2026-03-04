@@ -5,9 +5,9 @@ import { getExecuteFile, getStorageDirAbsolute, resolveConfig } from '../../conf
 import { executePendingChanges } from '../../execute'
 import { resolveAuthToken } from '../../github/auth'
 import { resolveRepo } from '../../github/repo'
-import { appendExecutionResult } from '../../sync'
+import { appendExecutionResult, syncRepository } from '../../sync'
 import { withErrorHandling } from '../errors'
-import { printExecutionPlan, printExecutionResult } from '../output'
+import { printExecutionPlan, printExecutionResult, printSyncSummary } from '../output'
 
 interface ExecuteCommandOptions {
   repo?: string
@@ -57,6 +57,22 @@ export function registerExecuteCommand(cli: CAC): void {
       await appendExecutionResult(storageDirAbsolute, result)
 
       printExecutionResult(result)
+
+      const affectedNumbers = [...new Set(
+        result.details
+          .filter(detail => detail.status === 'applied')
+          .map(detail => detail.number),
+      )]
+
+      if (options.apply && affectedNumbers.length > 0) {
+        const syncSummary = await syncRepository({
+          config,
+          repo: repo.repo,
+          token,
+          numbers: affectedNumbers,
+        })
+        printSyncSummary(syncSummary)
+      }
 
       if (result.failed > 0)
         process.exitCode = 1

@@ -1,7 +1,7 @@
 import type { PendingFile, PendingOp } from './types'
 import * as v from 'valibot'
-import { parse } from 'yaml'
-import { readTextFile } from '../utils/fs'
+import { parse, stringify } from 'yaml'
+import { readTextFile, writeTextFile } from '../utils/fs'
 
 const ACTIONS = [
   'close',
@@ -69,6 +69,11 @@ export async function readAndValidateExecuteFile(path: string): Promise<PendingF
     throw new Error(`Invalid execute file: ${customErrors.join('; ')}`)
 
   return pending
+}
+
+export async function writeExecuteFile(path: string, pending: PendingFile): Promise<void> {
+  const content = stringify(pending)
+  await writeTextFile(path, content.endsWith('\n') ? content : `${content}\n`)
 }
 
 export function validateExecuteRules(pending: PendingFile): string[] {

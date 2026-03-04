@@ -3,7 +3,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { readAndValidateExecuteFile, validateExecuteRules } from './validate'
+import { readAndValidateExecuteFile, validateExecuteRules, writeExecuteFile } from './validate'
 
 describe('validateExecuteRules', () => {
   it('passes a valid execute array', () => {
@@ -74,6 +74,25 @@ describe('readAndValidateExecuteFile', () => {
   it('throws for non-array root value', async () => {
     const file = await createTempExecuteFile(`action: close\nnumber: 1\n`)
     await expect(readAndValidateExecuteFile(file)).rejects.toThrow(/Invalid execute file/)
+    await cleanupTempFile(file)
+  })
+
+  it('writes remaining operations back to execute file', async () => {
+    const file = await createTempExecuteFile(`- action: close\n  number: 1\n`)
+    const remaining: PendingFile = [
+      {
+        action: 'reopen',
+        number: 2,
+      },
+      {
+        action: 'set-title',
+        number: 3,
+        title: 'new title',
+      },
+    ]
+
+    await writeExecuteFile(file, remaining)
+    await expect(readAndValidateExecuteFile(file)).resolves.toEqual(remaining)
     await cleanupTempFile(file)
   })
 })

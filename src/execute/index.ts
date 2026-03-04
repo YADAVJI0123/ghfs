@@ -4,7 +4,7 @@ import type { PendingOp } from './types'
 import process from 'node:process'
 import { cancel, confirm, isCancel, multiselect } from '@clack/prompts'
 import { createGitHubClient } from '../github/client'
-import { readAndValidateExecuteFile } from './validate'
+import { readAndValidateExecuteFile, writeExecuteFile } from './validate'
 
 export interface ExecuteOptions {
   config: GhfsResolvedConfig
@@ -72,12 +72,15 @@ export async function executePendingChanges(options: ExecuteOptions): Promise<Ex
   const octokit = createGitHubClient(options.token)
 
   const details: ExecutionResult['details'] = []
+  const appliedIndexes = new Set<number>()
   let applied = 0
   let failed = 0
 
   for (const { op, index } of selected) {
     try {
       const target = await applyOperation(octokit, owner, repo, op)
+      appliedIndexes.add(index)
+      await persistRemainingOps(options.executeFilePath, allOps, appliedIndexes)
       details.push({
         op: index + 1,
         action: op.action,
@@ -112,6 +115,11 @@ export async function executePendingChanges(options: ExecuteOptions): Promise<Ex
     failed,
     details,
   }
+}
+
+async function persistRemainingOps(path: string, allOps: PendingOp[], appliedIndexes: Set<number>): Promise<void> {
+  const remaining = allOps.filter((_, index) => !appliedIndexes.has(index))
+  await writeExecuteFile(path, remaining)
 }
 
 async function applyOperation(octokit: Octokit, owner: string, repo: string, op: PendingOp): Promise<IssueKind> {

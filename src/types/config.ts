@@ -24,6 +24,18 @@ export interface GhfsUserConfig {
   }
   sync?: {
     /**
+     * Whether to sync issues.
+     *
+     * @default true
+     */
+    issues?: boolean
+    /**
+     * Whether to sync pull requests.
+     *
+     * @default true
+     */
+    pulls?: boolean
+    /**
      * When to sync closed issues and pull requests.
      *
      * - `'existing'`: only sync closed issues and pull requests that already exist in the local filesystem.

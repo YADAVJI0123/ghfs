@@ -1,82 +1,67 @@
 # ghfs Design Spec
 
 ## Purpose
-This document is the implementation reference for `ghfs`, consolidating the original v1 plan and all follow-up product/engineering instructions.
+This document is the implementation-level design reference for `ghfs`.
+It reflects the current behavior in code, including sync, execute, config resolution, and filesystem/state contracts.
 
 ## Product Summary
-`ghfs` mirrors GitHub issues and pull requests into local files for offline review and batch maintenance, then applies explicit operations back to GitHub.
+`ghfs` mirrors GitHub issues and pull requests into local markdown files for offline review, then applies explicit batch actions from `.ghfs/execute.yml` back to GitHub.
 
-## Finalized Decisions (Original Plan + Later Instructions)
-1. Project name is `ghfs`.
-2. CLI framework is `cac`.
-3. GitHub API client is `octokit` (+ retry + throttling plugins).
-4. Prompt library is `@clack/prompts`.
-5. Execution file is `.ghfs/execute.yml` (not pending).
-6. Validation stack is `valibot` (not ajv).
-7. Source layout is grouped by domain:
-   - `src/sync/*`
-   - `src/execute/*`
-8. Sync state metadata file is `.ghfs/.sync.json`.
-9. Mirrored docs are unified under `.ghfs/issues/<number>.md`.
-10. Closed docs are moved to `.ghfs/issues/closed/<number>.md`.
-11. Open PR patch is mirrored as `.ghfs/issues/<number>.patch`.
-12. Closed PR patch is deleted.
-13. `ghfs` default command is `sync`.
-14. `execute` is dry-run by default and interactive in TTY.
-
-## Goals
-1. Local-first, reviewable mirror of issues and PRs.
-2. Deterministic batch operations via explicit execute file.
-3. Safe execution defaults (`dry-run`, conflict guard).
-4. Clear CLI UX for maintainers and automation.
-
-## Non-Goals (v1)
-1. Inferring write operations from edited markdown.
-2. PR merge/rebase/squash/auto-merge.
-3. Deep review-thread workflows.
+## Core Decisions
+1. CLI framework: `cac`
+2. GitHub API client: `octokit` with retry/throttling plugins
+3. Prompting: `@clack/prompts`
+4. Execute file: `.ghfs/execute.yml`
+5. Sync state file: `.ghfs/.sync.json`
+6. Validation: `valibot` + custom semantic checks
+7. Default command: `ghfs` => `ghfs sync`
+8. Execute mode: dry-run by default; `--apply` required for mutations
 
 ## CLI Contract
-1. `ghfs` -> alias of `ghfs sync`
+1. `ghfs` (alias of `ghfs sync`)
 2. `ghfs sync [--repo owner/name] [--since ISO] [--full]`
-3. `ghfs execute [--file .ghfs/execute.yml] [--apply] [--non-interactive] [--continue-on-error]`
+3. `ghfs execute [--repo owner/name] [--file path] [--apply] [--non-interactive] [--continue-on-error]`
 4. `ghfs status`
-5. `ghfs schema` (writes execute schema file)
+5. `ghfs schema`
 
 ## Configuration Contract (`ghfs.config.ts`)
-Main fields:
+Top-level fields:
 - `repo?: string`
-- `storageDir?: string` (default `.ghfs`)
-- `executeFile?: string` (default `.ghfs/execute.yml`)
-- `auth?: { preferGhCli?: boolean; tokenEnv?: string[] }`
-- `detectRepo?: { fromGit?: boolean; fromPackageJson?: boolean }`
-- `sync?: { includeClosed?: boolean; writePrPatch?: boolean; deleteClosedPrPatch?: boolean }`
-- `cli?: { interactiveExecuteInTTY?: boolean }`
+- `directory?: string` (default: `.ghfs`)
+- `auth?: { token?: string }`
+- `sync?: { ... }`
+
+`sync` fields:
+- `issues?: boolean` (default: `true`)
+- `pulls?: boolean` (default: `true`)
+- `closed?: 'existing' | 'all' | false` (default: `'existing'`)
+- `patches?: 'open' | 'all' | false` (default: `'open'`)
 
 Resolution precedence:
-1. CLI flags
+1. CLI options (where applicable)
 2. `ghfs.config.*`
-3. repo auto-detection
-4. `.ghfs/.sync.json` stored repo
+3. Built-in defaults
+4. Runtime detection (repo/auth helpers)
 
 ## Repository Resolution
 Priority:
 1. `--repo`
 2. config `repo`
-3. git remote (`origin`, `upstream`, then remaining)
+3. git remotes (`origin`, `upstream`, then others)
 4. `package.json.repository`
-5. `.ghfs/.sync.json`
 
-Conflict handling:
-- TTY: interactive source selection
-- non-TTY: hard error requiring explicit `--repo`
+If git and package.json disagree:
+- interactive TTY: prompt user to choose
+- non-interactive: hard error
 
 ## Auth Resolution
 Priority:
-1. `gh auth token` (if enabled)
-2. env tokens (`GH_TOKEN`, `GITHUB_TOKEN`)
-3. TTY prompt
+1. config `auth.token`
+2. `gh auth token`
+3. env: `GH_TOKEN` / `GITHUB_TOKEN` (after loading `.env`)
+4. interactive prompt (TTY only)
 
-If non-TTY and no token, fail fast.
+Non-TTY with no token is a hard error.
 
 ## Filesystem Contract
 ```txt
@@ -86,33 +71,76 @@ If non-TTY and no token, fail fast.
   schema/
     execute.schema.json
   issues/
-    <number>.md
-    <number>.patch        # open PR only
+    <number>.md              # open issue or PR
+    <number>.patch           # PR patch (based on sync.patches)
     closed/
-      <number>.md
+      <number>.md            # closed issue or PR
 ```
 
-## Mirror Document Contract (`.md`)
-Frontmatter includes:
-- `schema`, `repo`, `number`, `kind`, `state`, `title`
-- `author`, `labels`, `assignees`, `milestone`
-- `created_at`, `updated_at`, `closed_at`, `last_synced_at`
+Notes:
+- Issues and PRs share the same markdown directory tree (`issues/`).
+- PR patches are stored alongside open markdown files.
+
+## Mirror Markdown Contract
+Frontmatter fields include:
+- common: `schema`, `repo`, `number`, `kind`, `state`, `title`, `author`, `labels`, `assignees`, `milestone`
+- timestamps: `created_at`, `updated_at`, `closed_at`, `last_synced_at`
 - PR-only: `is_draft`, `merged`, `merged_at`, `base_ref`, `head_ref`, `reviewers_requested`
 
 Body sections:
 1. Title
 2. Description
-3. Comments (with comment id and timestamps)
+3. Comments (with comment id + updated marker)
+
+## Sync State Contract (`.sync.json`)
+Root:
+- `version: 1`
+- `repo?: string`
+- `lastSyncedAt?: string`
+- `lastSince?: string`
+- `items: Record<string, SyncItemState>`
+- `executions: ExecutionResult[]`
+
+`SyncItemState`:
+- `number`
+- `kind: 'issue' | 'pull'`
+- `state: 'open' | 'closed'`
+- `lastUpdatedAt` (GitHub `updated_at`)
+- `lastSyncedAt` (local sync timestamp)
+- `filePath`
+- `patchPath?`
+
+Backward compatibility:
+- legacy `updatedAt` is normalized to `lastUpdatedAt` on state load.
+
+## Sync Behavior
+High-level flow:
+1. Resolve repo + token.
+2. Ensure storage structure.
+3. Load `.sync.json` and compute `since` cursor (unless `--full` or targeted `numbers`).
+4. Fetch candidates:
+   - targeted: by issue/PR numbers
+   - regular: paginated list
+5. Filter by `sync.issues` / `sync.pulls`.
+6. For each candidate:
+   - apply closed-policy handling (`sync.closed`)
+   - compare `lastUpdatedAt` vs paginated `updated_at` and skip unchanged items
+   - otherwise fetch comments (+ PR metadata if pull), render markdown, move paths as needed
+   - manage patch write/delete from `sync.patches`
+   - update tracked item state
+7. Persist `.sync.json` summary metadata and counters.
+
+Details:
+- `sync.closed === false` uses open-only pagination for full sync; incremental sync also requests recently closed items since cursor to clean up local mirror.
+- unchanged optimization skips expensive per-item re-sync when remote `updated_at` matches tracked `lastUpdatedAt` and required local files exist.
+- `sync.issues` / `sync.pulls` disable processing for that kind only. Disabled kinds are ignored; existing mirrored files for them are not aggressively deleted.
 
 ## Execute File Contract (`.ghfs/execute.yml`)
-Root is a YAML array.
-Each item has:
-- `action`
-- `number`
-- optional `ifUnchangedSince`
-- action-specific fields (e.g. `body`, `labels`, `reviewers`, `milestone`, `reason`)
-
-No root `version/repo`; no per-op `id/target`.
+Root must be a YAML array of operations.
+Each operation includes:
+- required: `number`, `action`
+- optional: `ifUnchangedSince`
+- action payload fields (e.g. `title`, `body`, `labels`, `assignees`, `reviewers`, `milestone`, `reason`)
 
 Supported actions:
 - `close`
@@ -135,56 +163,52 @@ Supported actions:
 - `mark-ready-for-review`
 - `convert-to-draft`
 
-## Sync Behavior
-1. Resolve repo and token.
-2. Pull issues/PRs (incremental via `.sync.json` cursor unless `--full`).
-3. Render markdown mirror files.
-4. Move closed/open docs between root and `closed/`.
-5. Write PR patch for open PRs.
-6. Delete PR patch for closed PRs.
-7. Persist sync state and counters in `.ghfs/.sync.json`.
-
 ## Execute Behavior
-1. Parse and validate `.ghfs/execute.yml` via valibot + rule checks.
-2. In TTY interactive mode, allow selecting operations.
-3. Print execution plan.
-4. If no `--apply`, stop (dry-run).
-5. If `--apply`, optionally confirm in TTY then execute in order.
-6. For each op:
-   - fetch issue/PR
-   - enforce `ifUnchangedSince` conflict guard
-   - apply mapped GitHub operation
-7. Save run summary to sync state execution history.
+1. Parse + validate execute file.
+2. In interactive TTY mode, allow selecting subset of operations.
+3. Print plan.
+4. Dry-run by default (`--apply` required to mutate).
+5. On apply:
+   - optional confirm prompt in TTY
+   - execute operations in order
+   - enforce `ifUnchangedSince` conflict guard per op
+6. After each successful operation, rewrite `execute.yml` to keep only remaining (not-yet-successful) operations.
+7. Save execution run record to `.sync.json`.
+8. Run targeted sync for affected numbers only (successful operations) to refresh local mirror.
 
 ## Validation Strategy
-Two layers:
-1. Structural validation with valibot.
-2. Semantic rule validation (`number > 0`, required payload fields by action, valid datetime).
+Two-layer validation for execute file:
+1. Structural validation via `valibot` schema.
+2. Semantic validation rules (required payload by action, positive integer `number`, valid datetime for `ifUnchangedSince`).
 
-## Code Organization
-- `src/cli.ts`: command orchestration.
-- `src/config.ts`: config discovery/default merge.
-- `src/github/*`: auth, repo detection, octokit client.
-- `src/sync/*`: mirror rendering, paths, state, status, sync flow.
-- `src/execute/*`: execute schema, types, parser/validator, apply engine.
-- `src/types.ts`: shared public/internal core types.
+## Sync Module Structure
+`src/sync/index.ts` is a barrel file only.
+
+Current breakdown:
+- `contracts.ts`: public sync options/summary types
+- `execution-log.ts`: execution result append helper
+- `sync-repository.ts`: top-level sync orchestration
+- `sync-repository-github.ts`: paginate/fetch GitHub data + PR metadata + patches
+- `sync-repository-item.ts`: per-item sync workflow
+- `sync-repository-storage.ts`: path/storage/prune/policy helpers
+- `sync-repository-utils.ts`: pure helpers and decision functions
+- `sync-repository-types.ts`: internal sync types
+- `state.ts`: sync state load/save/normalization
+- `status.ts`: status summary from sync state
+- `markdown.ts`, `paths.ts`: render/path contracts
 
 ## Testing Strategy
-Tests are colocated with implementation (`src/**.test.ts`).
-Current focus:
-1. repo normalization
-2. markdown rendering
-3. sync path generation
-4. execute validation (parse + rule checks)
-5. config resolution defaults/overrides
+Tests are colocated with source in `src/**/*.test.ts`.
+Current focus areas:
+1. config resolution defaults + overrides
+2. repo normalization and detection behavior
+3. markdown rendering contract
+4. sync paths and sync-state normalization
+5. sync optimizations and filtering (`closed`, unchanged skip, issues/pulls toggles)
+6. execute validation and execute-file rewrite behavior
 
 ## Operational Defaults
-1. `sync` non-interactive by default.
-2. `execute` interactive in TTY by default.
-3. `execute` is dry-run by default; use `--apply` to mutate.
-4. Continue-on-error is opt-in via `--continue-on-error`.
-
-## Future Extensions (Post-v1)
-1. Optional VS Code extension for guided sync/execute.
-2. Additional GitHub maintainer actions (assess carefully for safety).
-3. More robust pagination/caching and richer conflict policies.
+1. `sync` is non-interactive.
+2. `execute` is interactive in TTY unless `--non-interactive`.
+3. `execute` is dry-run unless `--apply`.
+4. `continue-on-error` is opt-in.

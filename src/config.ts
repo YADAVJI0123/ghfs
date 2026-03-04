@@ -58,6 +58,8 @@ export async function resolveConfig(options: ResolveConfigOptions = {}): Promise
   const directory = merged.directory ?? DEFAULT_STORAGE_DIR
   const configuredToken = merged.auth?.token?.trim() || ''
   const repo = merged.repo?.trim() || ''
+  const issuesEnabled = merged.sync?.issues ?? true
+  const pullsEnabled = merged.sync?.pulls ?? true
   const closedMode = merged.sync?.closed ?? 'existing'
   const patchesMode = merged.sync?.patches ?? 'open'
 
@@ -69,6 +71,8 @@ export async function resolveConfig(options: ResolveConfigOptions = {}): Promise
       token: configuredToken,
     },
     sync: {
+      issues: issuesEnabled,
+      pulls: pullsEnabled,
       closed: closedMode,
       patches: patchesMode,
     },

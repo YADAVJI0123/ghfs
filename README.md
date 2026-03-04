@@ -1,103 +1,82 @@
 # ghfs
 
-Mirror GitHub issues and pull requests to local markdown files, then execute maintainer actions in batch from `.ghfs/execute.yml`.
+GitHub issues/PRs as filesystem, for offline view and operations in batch. Designed for human and agents.
 
-## Install
-
-```bash
-pnpm install
-pnpm build
-```
-
-## Commands
+> [!IMPORTANT]
+> Still working in progress, not usable yet.
 
 ```bash
-ghfs                      # same as `ghfs sync`
-ghfs sync [--repo owner/name] [--since ISO] [--full]
-ghfs execute [--file .ghfs/execute.yml] [--apply] [--non-interactive] [--continue-on-error]
-ghfs status
-ghfs schema
+pnpm install @ghfs/cli
 ```
 
-## Config (`ghfs.config.ts`)
+and then run the command inside a repository directory:
 
-```ts
-import { defineConfig } from '@ghfs/cli'
-
-export default defineConfig({
-  repo: 'owner/name',
-  directory: '.ghfs',
-  auth: {
-    token: process.env.GITHUB_TOKEN,
-  },
-  sync: {
-    closed: 'existing',
-    patches: 'open',
-  },
-})
+```bash
+ghfs
 ```
 
-Precedence: `CLI flags > ghfs.config.ts > auto-detect (.git/package.json)`.
-
-## Local Files
+It will sync the open issues and pull requests to the local filesystem under `.ghfs` directory, like:
 
 ```txt
 .ghfs/
-  .sync.json
-  execute.yml
-  schema/execute.schema.json
   issues/
-    123.md
-    123.patch
-    closed/
-      124.md
+    <number>.md
+  pulls/
+    <number>.md
+    <number>.patch
 ```
 
-- Open issues/PRs: `.ghfs/issues/<number>.md`
-- Closed issues/PRs: `.ghfs/issues/closed/<number>.md`
-- Open PR patch: `.ghfs/issues/<number>.patch`
+Where you can view them, or ask your local agent to summarize them for you.
 
-## Execute Actions
+## Execute operations
 
-Supported `action` values:
+`ghfs` also allows you to take actions on the issues and pull requests in batch.
 
-- `close`
-- `reopen`
-- `set-title`
-- `set-body`
-- `add-comment`
-- `add-labels`
-- `remove-labels`
-- `set-labels`
-- `add-assignees`
-- `remove-assignees`
-- `set-assignees`
-- `set-milestone`
-- `clear-milestone`
-- `lock`
-- `unlock`
-- `request-reviewers` (PR)
-- `remove-reviewers` (PR)
-- `mark-ready-for-review` (PR)
-- `convert-to-draft` (PR)
-
-Each entry is one action object with `action`, `number`, and action-specific payload fields.
-
-## Execute File Example
+Create a `.ghfs/execute.yml` file with the following content:
 
 ```yaml
+# close the issue #123
+- action: close
+  number: 123
+
+# change the title of the issue #125 to "New title"
+- action: set-title
+  number: 125
+  title: New title
+
+# add the labels "bug" and "feature" to the issue #125
 - action: add-labels
-  number: 12
-  labels: [triage]
-- action: request-reviewers
-  number: 45
-  reviewers: [alice, bob]
+  number: 125
+  labels: [bug, feature]
 ```
 
-## Authentication
+Then run
 
-1. `gh auth token` (preferred)
-2. `GH_TOKEN` / `GITHUB_TOKEN`
-3. TTY prompt on first run
+```bash
+ghfs execute
+```
 
-In non-TTY mode, missing auth token is a hard error.
+to execute the operations in batch.
+
+> TODO: directly editing the `<number>.md` file to apply the operations will be rolled out in the future.
+
+## Configuration
+
+You can configure by creating a `ghfs.config.ts` file in the root of the repository.
+
+```ts
+import type { GhfsUserConfig } from '@ghfs/cli'
+
+export default defineConfig({
+  repo: 'owner/name',
+  // other options...
+})
+```
+
+## TODOs
+
+- [ ] `execute.md` file with human-friendly instructions (`close #123 #234`, `set-title #125 "New title"`).
+- [ ] Directly editing the `<number>.md` file to apply the operations.
+- [ ] Add a VS Code extension for guided sync/execute.
+- [ ] Documentation.
+- [ ] Agent Skills.

@@ -5,7 +5,8 @@ export interface SyncItemState {
   number: number
   kind: IssueKind
   state: IssueState
-  updatedAt: string
+  lastUpdatedAt: string
+  lastSyncedAt: string
   filePath: string
   patchPath?: string
 }
