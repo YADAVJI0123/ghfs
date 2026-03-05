@@ -3,6 +3,7 @@ import type { IssueKind, IssueState } from '../types'
 export interface ProviderItem {
   number: number
   kind: IssueKind
+  url?: string
   state: IssueState
   updatedAt: string
   createdAt: string

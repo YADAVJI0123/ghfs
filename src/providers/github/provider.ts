@@ -336,6 +336,7 @@ function mapIssue(issue: GitHubIssue): ProviderItem {
   return {
     number: issue.number,
     kind: issue.pull_request ? 'pull' : 'issue',
+    ...(issue.html_url ? { url: issue.html_url } : {}),
     state: issue.state === 'closed' ? 'closed' : 'open',
     updatedAt: issue.updated_at,
     createdAt: issue.created_at,
@@ -368,6 +369,7 @@ function mapComment(comment: GitHubComment): ProviderComment {
 interface GitHubIssue {
   number: number
   state: 'open' | 'closed'
+  html_url?: string
   updated_at: string
   created_at: string
   closed_at: string | null

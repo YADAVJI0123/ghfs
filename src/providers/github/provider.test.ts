@@ -45,6 +45,7 @@ describe('createGitHubProvider', () => {
               {
                 number: 1,
                 state: 'open',
+                html_url: 'https://github.com/owner/repo/issues/1',
                 updated_at: '2026-01-10T00:00:00.000Z',
                 created_at: '2026-01-01T00:00:00.000Z',
                 closed_at: null,
@@ -58,6 +59,7 @@ describe('createGitHubProvider', () => {
               {
                 number: 2,
                 state: 'closed',
+                html_url: 'https://github.com/owner/repo/pull/2',
                 updated_at: '2026-01-11T00:00:00.000Z',
                 created_at: '2026-01-02T00:00:00.000Z',
                 closed_at: '2026-01-12T00:00:00.000Z',
@@ -100,6 +102,7 @@ describe('createGitHubProvider', () => {
       {
         number: 1,
         kind: 'issue',
+        url: 'https://github.com/owner/repo/issues/1',
         state: 'open',
         updatedAt: '2026-01-10T00:00:00.000Z',
         createdAt: '2026-01-01T00:00:00.000Z',
@@ -114,6 +117,7 @@ describe('createGitHubProvider', () => {
       {
         number: 2,
         kind: 'pull',
+        url: 'https://github.com/owner/repo/pull/2',
         state: 'closed',
         updatedAt: '2026-01-11T00:00:00.000Z',
         createdAt: '2026-01-02T00:00:00.000Z',

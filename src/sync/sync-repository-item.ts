@@ -57,6 +57,7 @@ export async function syncIssueCandidate(context: SyncContext, issue: ProviderIt
     repo: context.repoSlug,
     number,
     kind,
+    url: issue.url,
     state,
     title: issue.title,
     body: issue.body ?? '',
