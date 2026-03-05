@@ -1,6 +1,7 @@
-import { access, mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { EXECUTE_SCHEMA_RELATIVE_PATH } from '../constants'
+import { pathExists } from '../utils/fs'
 
 export const executeSchema = {
   $id: 'https://ghfs.dev/schema/execute.json',
@@ -112,14 +113,4 @@ async function ensureExecuteFile(executeFilePath: string): Promise<void> {
 
 export function getExecuteSchemaPath(storageDirAbsolute: string): string {
   return join(storageDirAbsolute, EXECUTE_SCHEMA_RELATIVE_PATH)
-}
-
-async function pathExists(path: string): Promise<boolean> {
-  try {
-    await access(path)
-    return true
-  }
-  catch {
-    return false
-  }
 }

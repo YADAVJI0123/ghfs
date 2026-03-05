@@ -1,9 +1,9 @@
 import type { RepoDetectionCandidate, RepoResolutionResult } from '../types'
 import { execFile } from 'node:child_process'
-import { readFile, stat } from 'node:fs/promises'
+import { readFile } from 'node:fs/promises'
 import process from 'node:process'
 import { promisify } from 'node:util'
-import { cancel, isCancel, select } from '@clack/prompts'
+import { pathExists } from '../utils/fs'
 
 const execFileAsync = promisify(execFile)
 
@@ -12,6 +12,7 @@ export interface ResolveRepoOptions {
   cliRepo?: string
   configRepo?: string
   interactive: boolean
+  selectRepoChoice?: (gitCandidate: RepoDetectionCandidate, pkgCandidate: RepoDetectionCandidate) => Promise<string | undefined>
 }
 
 export async function resolveRepo(options: ResolveRepoOptions): Promise<RepoResolutionResult> {
@@ -47,11 +48,18 @@ export async function resolveRepo(options: ResolveRepoOptions): Promise<RepoReso
     candidates.push(pkgCandidate)
 
   if (gitCandidate && pkgCandidate && gitCandidate.repo !== pkgCandidate.repo) {
-    if (options.interactive && process.stdin.isTTY) {
-      const repo = await promptRepoChoice(gitCandidate, pkgCandidate)
+    if (options.interactive && process.stdin.isTTY && options.selectRepoChoice) {
+      const repo = await options.selectRepoChoice(gitCandidate, pkgCandidate)
+      if (!repo)
+        throw new Error('Repository selection cancelled')
+
+      const normalizedRepo = normalizeRepo(repo)
+      if (!normalizedRepo || (normalizedRepo !== gitCandidate.repo && normalizedRepo !== pkgCandidate.repo))
+        throw new Error(`Invalid repository selection: ${repo}`)
+
       return {
-        repo,
-        source: repo === gitCandidate.repo ? 'git' : 'package-json',
+        repo: normalizedRepo,
+        source: normalizedRepo === gitCandidate.repo ? 'git' : 'package-json',
         candidates,
       }
     }
@@ -193,16 +201,6 @@ async function detectRepoFromPackageJson(cwd: string): Promise<RepoDetectionCand
   return undefined
 }
 
-async function pathExists(path: string): Promise<boolean> {
-  try {
-    await stat(path)
-    return true
-  }
-  catch {
-    return false
-  }
-}
-
 function prioritizeRemotes(remotes: string[]): string[] {
   const unique = [...new Set(remotes)]
   const priority = ['origin', 'upstream']
@@ -213,28 +211,4 @@ function prioritizeRemotes(remotes: string[]): string[] {
 
 function stripGitSuffix(name: string): string {
   return name.replace(/\.git$/, '')
-}
-
-async function promptRepoChoice(gitCandidate: RepoDetectionCandidate, pkgCandidate: RepoDetectionCandidate): Promise<string> {
-  const result = await select<string>({
-    message: 'Detected conflicting GitHub repositories. Which one should ghfs use?',
-    options: [
-      {
-        label: `${gitCandidate.repo} (${gitCandidate.detail})`,
-        value: gitCandidate.repo,
-      },
-      {
-        label: `${pkgCandidate.repo} (${pkgCandidate.detail})`,
-        value: pkgCandidate.repo,
-      },
-    ],
-    initialValue: gitCandidate.repo,
-  })
-
-  if (isCancel(result)) {
-    cancel('Repository selection cancelled')
-    throw new Error('Repository selection cancelled')
-  }
-
-  return result
 }

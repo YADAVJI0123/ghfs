@@ -1,13 +1,13 @@
 import { execFile } from 'node:child_process'
 import process from 'node:process'
 import { promisify } from 'node:util'
-import { cancel, isCancel, password } from '@clack/prompts'
 
 const execFileAsync = promisify(execFile)
 
 export interface ResolveTokenOptions {
   token?: string
   interactive: boolean
+  promptForToken?: () => Promise<string | undefined>
 }
 
 export async function resolveAuthToken(options: ResolveTokenOptions): Promise<string> {
@@ -26,7 +26,14 @@ export async function resolveAuthToken(options: ResolveTokenOptions): Promise<st
   if (!options.interactive || !process.stdin.isTTY)
     throw new Error('Missing GitHub token. Set GH_TOKEN/GITHUB_TOKEN or run gh auth login.')
 
-  return await promptForToken()
+  if (!options.promptForToken)
+    throw new Error('Missing GitHub token. Set GH_TOKEN/GITHUB_TOKEN or run gh auth login.')
+
+  const promptedToken = await options.promptForToken()
+  if (promptedToken?.trim())
+    return promptedToken.trim()
+
+  throw new Error('Token prompt cancelled')
 }
 
 async function readTokenFromGhCli(): Promise<string | undefined> {
@@ -50,18 +57,4 @@ async function readTokenFromEnv(): Promise<string | undefined> {
       return value
   }
   return undefined
-}
-
-async function promptForToken(): Promise<string> {
-  const result = await password({
-    message: 'Enter a GitHub token (PAT) for ghfs:',
-    validate: value => value?.trim().length ? undefined : 'Token is required',
-  })
-
-  if (isCancel(result)) {
-    cancel('Token prompt cancelled')
-    throw new Error('Token prompt cancelled')
-  }
-
-  return result.trim()
 }

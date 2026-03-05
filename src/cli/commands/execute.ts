@@ -1,6 +1,5 @@
 import type { CAC } from 'cac'
 import type { PendingOp } from '../../execute/types'
-import type { SyncSummary } from '../../sync'
 import type { ExecutionResult } from '../../types'
 import type { CliPrinter } from '../printer'
 import { resolve } from 'node:path'
@@ -10,8 +9,11 @@ import { getExecuteFile, getStorageDirAbsolute, resolveConfig } from '../../conf
 import { resolveRepo } from '../../config/repo'
 import { executePendingChanges } from '../../execute'
 import { appendExecutionResult, syncRepository } from '../../sync'
+import { describeAction } from '../../utils/action'
 import { withErrorHandling } from '../errors'
-import { createCliPrinter, formatDuration } from '../printer'
+import { createCliPrinter } from '../printer'
+import { createExecutePrompts, promptForToken, promptRepoChoice } from '../prompts'
+import { printSyncSummaryTable } from '../summary'
 
 interface ExecuteCommandOptions {
   repo?: string
@@ -42,11 +44,13 @@ export function registerExecuteCommand(cli: CAC): void {
         cliRepo: options.repo,
         configRepo: config.repo,
         interactive,
+        selectRepoChoice: promptRepoChoice,
       })
 
       const token = await resolveAuthToken({
         token: config.auth.token,
         interactive,
+        promptForToken,
       })
 
       const executeFilePath = resolve(config.cwd, options.file ?? getExecuteFile(config))
@@ -60,6 +64,7 @@ export function registerExecuteCommand(cli: CAC): void {
         continueOnError: Boolean(options.continueOnError),
         onPlan: ops => printExecutionPlan(printer, ops),
         reporter: printer.createExecuteReporter(),
+        prompts: createExecutePrompts(),
       })
 
       await appendExecutionResult(storageDirAbsolute, result)
@@ -80,7 +85,7 @@ export function registerExecuteCommand(cli: CAC): void {
           numbers: affectedNumbers,
           reporter: printer.createSyncReporter(),
         })
-        printSyncSummary(printer, syncSummary)
+        printSyncSummaryTable(printer, syncSummary, 'Sync Summary')
       }
 
       if (result.failed > 0)
@@ -102,7 +107,7 @@ function printExecutionPlan(printer: CliPrinter, ops: PendingOp[]): void {
     return
   }
 
-  printer.table('Execution Plan Ops', ops.map((op, index) => [`op ${index + 1}`, describeAction(op)] as const), { indent: 2 })
+  printer.table('Execution Plan Ops', ops.map((op, index) => [`op ${index + 1}`, describeAction(op.action, op.number)] as const), { indent: 2 })
 }
 
 function printExecutionResult(printer: CliPrinter, result: ExecutionResult): void {
@@ -125,26 +130,4 @@ function printExecutionResult(printer: CliPrinter, result: ExecutionResult): voi
     result.details.map(detail => [`op ${detail.op}`, `[${detail.status}] ${detail.message}`] as const),
     { indent: 2 },
   )
-}
-
-function printSyncSummary(printer: CliPrinter, summary: SyncSummary): void {
-  printer.table('Sync Summary', [
-    ['repo', summary.repo],
-    ['synced at', summary.syncedAt ? new Date(summary.syncedAt) : '-'],
-    ['since', summary.since ? new Date(summary.since) : '-'],
-    ['mode', summary.mode],
-    ['duration', formatDuration(summary.durationMs)],
-    ['scanned', summary.scanned],
-    ['selected', summary.selected],
-    ['processed', summary.processed],
-    ['skipped', summary.skipped],
-    ['markdown written', summary.written],
-    ['moved', summary.moved],
-    ['patch written', summary.patchesWritten],
-    ['patch deleted', summary.patchesDeleted],
-  ], { excludeZero: true })
-}
-
-function describeAction(op: PendingOp): string {
-  return `${op.action} #${op.number}`
 }

@@ -2,10 +2,15 @@ import type { ExecutionResult, GhfsResolvedConfig, IssueKind } from '../types'
 import type { RepositoryProvider } from '../types/provider'
 import type { PendingOp } from './types'
 import process from 'node:process'
-import { cancel, confirm, isCancel, multiselect } from '@clack/prompts'
 import { createRepositoryProvider } from '../providers/factory'
+import { describeAction } from '../utils/action'
 import { ensureExecuteArtifacts } from './schema'
 import { readAndValidateExecuteFile, writeExecuteFile } from './validate'
+
+export interface ExecutePrompts {
+  selectOperations: (ops: PendingOp[]) => Promise<number[] | undefined>
+  confirmApply: (count: number) => Promise<boolean | undefined>
+}
 
 export interface ExecuteOptions {
   config: GhfsResolvedConfig
@@ -18,6 +23,7 @@ export interface ExecuteOptions {
   continueOnError: boolean
   onPlan?: (ops: PendingOp[]) => void
   reporter?: ExecuteReporter
+  prompts?: ExecutePrompts
 }
 
 export interface ExecuteReporterStartEvent {
@@ -57,8 +63,11 @@ export async function executePendingChanges(options: ExecuteOptions): Promise<Ex
     const allOps = await readAndValidateExecuteFile(options.executeFilePath)
 
     const interactive = process.stdin.isTTY && !options.nonInteractive
+    if (interactive && !options.prompts)
+      throw new Error('Interactive execute prompts are unavailable. Use --non-interactive or provide prompts.')
+
     const selected = interactive
-      ? await selectOperations(allOps)
+      ? await selectOperations(allOps, options.prompts!)
       : allOps.map((op, index) => ({ op, index }))
 
     const runId = createRunId()
@@ -102,7 +111,7 @@ export async function executePendingChanges(options: ExecuteOptions): Promise<Ex
           action: op.action,
           number: op.number,
           status: 'planned',
-          message: describeAction(op),
+          message: describeAction(op.action, op.number),
         })),
       }
       options.reporter?.onComplete?.({ result })
@@ -110,7 +119,7 @@ export async function executePendingChanges(options: ExecuteOptions): Promise<Ex
     }
 
     if (interactive) {
-      const confirmed = await confirmApply(selected.length)
+      const confirmed = await confirmApply(selected.length, options.prompts!)
       if (!confirmed)
         throw new Error('Execution cancelled')
     }
@@ -136,7 +145,7 @@ export async function executePendingChanges(options: ExecuteOptions): Promise<Ex
           number: op.number,
           target,
           status: 'applied',
-          message: describeAction(op),
+          message: describeAction(op.action, op.number),
         }
         details.push(detail)
         applied += 1
@@ -297,48 +306,30 @@ async function applyOperation(provider: RepositoryProvider, op: PendingOp): Prom
   return item.kind
 }
 
-function describeAction(op: PendingOp): string {
-  return `${op.action} #${op.number}`
-}
-
 function createRunId(): string {
   const timestamp = new Date().toISOString().replace(/[-:.TZ]/g, '')
   const random = Math.random().toString(36).slice(2, 7)
   return `run_${timestamp}_${random}`
 }
 
-async function selectOperations(ops: PendingOp[]): Promise<Array<{ op: PendingOp, index: number }>> {
-  const result = await multiselect<number>({
-    message: 'Select operations to include',
-    options: ops.map((op, index) => ({
-      label: `${index + 1}. ${describeAction(op)}`,
-      value: index,
-    })),
-    required: false,
-  })
-
-  if (isCancel(result)) {
-    cancel('Operation selection cancelled')
+async function selectOperations(
+  ops: PendingOp[],
+  prompts: ExecutePrompts,
+): Promise<Array<{ op: PendingOp, index: number }>> {
+  const selectedIndexes = await prompts.selectOperations(ops)
+  if (!selectedIndexes)
     throw new Error('Execution cancelled')
-  }
 
-  const selectedIndexes = new Set(result)
+  const selectedIndexesSet = new Set(selectedIndexes)
   return ops
     .map((op, index) => ({ op, index }))
-    .filter(item => selectedIndexes.has(item.index))
+    .filter(item => selectedIndexesSet.has(item.index))
 }
 
-async function confirmApply(count: number): Promise<boolean> {
-  const result = await confirm({
-    message: `Apply ${count} ${count === 1 ? 'operation' : 'operations'} to GitHub?`,
-    initialValue: false,
-  })
-
-  if (isCancel(result)) {
-    cancel('Execution cancelled')
+async function confirmApply(count: number, prompts: ExecutePrompts): Promise<boolean> {
+  const result = await prompts.confirmApply(count)
+  if (result == null)
     return false
-  }
-
   return result
 }
 

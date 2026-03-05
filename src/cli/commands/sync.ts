@@ -1,6 +1,4 @@
 import type { CAC } from 'cac'
-import type { SyncSummary } from '../../sync'
-import type { CliPrinter } from '../printer'
 import { resolve } from 'node:path'
 import process from 'node:process'
 import { resolveAuthToken } from '../../config/auth'
@@ -9,7 +7,9 @@ import { resolveRepo } from '../../config/repo'
 import { ensureExecuteArtifacts } from '../../execute/schema'
 import { syncRepository } from '../../sync'
 import { withErrorHandling } from '../errors'
-import { createCliPrinter, formatDuration } from '../printer'
+import { createCliPrinter } from '../printer'
+import { promptForToken, promptRepoChoice } from '../prompts'
+import { printSyncSummaryTable } from '../summary'
 
 interface SyncCommandOptions {
   repo?: string
@@ -39,11 +39,13 @@ function setupSyncCommand(command: ReturnType<CAC['command']>): void {
         cliRepo: options.repo,
         configRepo: config.repo,
         interactive: process.stdin.isTTY,
+        selectRepoChoice: promptRepoChoice,
       })
 
       const token = await resolveAuthToken({
         token: config.auth.token,
         interactive: process.stdin.isTTY,
+        promptForToken,
       })
 
       const summary = await syncRepository({
@@ -55,25 +57,7 @@ function setupSyncCommand(command: ReturnType<CAC['command']>): void {
         reporter: printer.createSyncReporter(),
       })
 
-      printSyncSummary(printer, summary)
+      printSyncSummaryTable(printer, summary, 'Summary')
       printer.done('Sync finished')
     }))
-}
-
-function printSyncSummary(printer: CliPrinter, summary: SyncSummary): void {
-  printer.table('Summary', [
-    ['repo', summary.repo],
-    ['synced at', summary.syncedAt ? new Date(summary.syncedAt) : '-'],
-    ['since', summary.since ? new Date(summary.since) : '-'],
-    ['mode', summary.mode],
-    ['duration', formatDuration(summary.durationMs)],
-    ['scanned', summary.scanned],
-    ['selected', summary.selected],
-    ['processed', summary.processed],
-    ['skipped', summary.skipped],
-    ['markdown written', summary.written],
-    ['moved', summary.moved],
-    ['patch written', summary.patchesWritten],
-    ['patch deleted', summary.patchesDeleted],
-  ], { excludeZero: true })
 }

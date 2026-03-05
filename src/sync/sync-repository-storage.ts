@@ -1,7 +1,8 @@
 import type { SyncItemState, SyncState } from '../types'
 import type { ClosedIssuePolicyInput, IssuePaths, ItemSyncStats, PatchPlan, SyncContext } from './sync-repository-types'
-import { mkdir, rename, rm, stat } from 'node:fs/promises'
+import { mkdir, rename, rm } from 'node:fs/promises'
 import { dirname, isAbsolute, join } from 'node:path'
+import { pathExists } from '../utils/fs'
 import {
   getClosedIssuesDir,
   getClosedPullsDir,
@@ -235,16 +236,6 @@ export async function removePatchIfExists(storageDirAbsolute: string, number: nu
     return 0
   await removePath(patchPath)
   return 1
-}
-
-async function pathExists(path: string): Promise<boolean> {
-  try {
-    await stat(path)
-    return true
-  }
-  catch {
-    return false
-  }
 }
 
 async function removePath(path: string): Promise<void> {
