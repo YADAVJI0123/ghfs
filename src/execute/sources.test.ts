@@ -15,19 +15,19 @@ afterEach(async () => {
 describe('loadExecuteSources', () => {
   it('loads actions from execute.yml and execute.md', async () => {
     const dir = await createTempDir()
-    await writeFile(join(dir, 'execute.yml'), '- action: close\n  number: 1\n', 'utf8')
+    await writeFile(join(dir, 'execute.yml'), '- action: ClOsEs\n  number: 1\n', 'utf8')
     await writeFile(join(dir, 'execute.md'), [
-      'close #2 #3',
-      'set-title #4 "new title"',
-      'add-tag #5 foo, bar',
+      'open #2 #3',
+      'title #4 "new title"',
+      'LaBeL #5 foo, bar',
       '',
     ].join('\n'), 'utf8')
 
     const loaded = await loadExecuteSources(join(dir, 'execute.yml'))
     expect(loaded.ops).toEqual([
       { action: 'close', number: 1 },
-      { action: 'close', number: 2 },
-      { action: 'close', number: 3 },
+      { action: 'reopen', number: 2 },
+      { action: 'reopen', number: 3 },
       { action: 'set-title', number: 4, title: 'new title' },
       { action: 'add-labels', number: 5, labels: ['foo', 'bar'] },
     ])
@@ -58,13 +58,37 @@ describe('loadExecuteSources', () => {
   it('writes back partial progress for multi-number simple actions', async () => {
     const dir = await createTempDir()
     await writeFile(join(dir, 'execute.yml'), '[]\n', 'utf8')
-    await writeFile(join(dir, 'execute.md'), 'close #10 #11 #12\n', 'utf8')
+    await writeFile(join(dir, 'execute.md'), 'ClOsEs #10 #11 #12\n', 'utf8')
 
     const loaded = await loadExecuteSources(join(dir, 'execute.yml'))
     expect(loaded.ops).toHaveLength(3)
 
     await loaded.writeRemaining(new Set([1]))
-    await expect(readFile(join(dir, 'execute.md'), 'utf8')).resolves.toBe('close #11\n\n')
+    await expect(readFile(join(dir, 'execute.md'), 'utf8')).resolves.toBe('ClOsEs #11\n\n')
+  })
+
+  it('preserves original YAML action text when writing remaining operations', async () => {
+    const dir = await createTempDir()
+    await writeFile(join(dir, 'execute.yml'), [
+      '- action: ClOsEs',
+      '  number: 10',
+      '- action: LABEL',
+      '  number: 11',
+      '  labels: [bug]',
+      '',
+    ].join('\n'), 'utf8')
+    await writeFile(join(dir, 'execute.md'), '', 'utf8')
+
+    const loaded = await loadExecuteSources(join(dir, 'execute.yml'))
+    expect(loaded.ops).toEqual([
+      { action: 'close', number: 10 },
+      { action: 'add-labels', number: 11, labels: ['bug'] },
+    ])
+
+    await loaded.writeRemaining(new Set([1]))
+    const rewritten = await readFile(join(dir, 'execute.yml'), 'utf8')
+    expect(rewritten).toContain('action: LABEL')
+    expect(rewritten).not.toContain('action: add-labels')
   })
 
   it('loads per-item actions from markdown frontmatter differences', async () => {

@@ -3,34 +3,13 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname } from 'pathe'
 import * as v from 'valibot'
 import { parse, stringify } from 'yaml'
-
-const ACTIONS = [
-  'close',
-  'reopen',
-  'set-title',
-  'set-body',
-  'add-comment',
-  'add-labels',
-  'remove-labels',
-  'set-labels',
-  'add-assignees',
-  'remove-assignees',
-  'set-assignees',
-  'set-milestone',
-  'clear-milestone',
-  'lock',
-  'unlock',
-  'request-reviewers',
-  'remove-reviewers',
-  'mark-ready-for-review',
-  'convert-to-draft',
-] as const
+import { resolvePendingAction } from './actions'
 
 const LOCK_REASONS = ['resolved', 'off-topic', 'too heated', 'too-heated', 'spam'] as const
 
 const executeOpSchema = v.looseObject({
   number: v.number(),
-  action: v.picklist(ACTIONS),
+  action: v.string(),
   ifUnchangedSince: v.optional(v.string()),
   title: v.optional(v.string()),
   body: v.optional(v.string()),
@@ -44,6 +23,16 @@ const executeOpSchema = v.looseObject({
 const executeFileSchema = v.array(executeOpSchema)
 
 export async function readAndValidateExecuteFile(path: string): Promise<PendingFile> {
+  const { ops } = await readAndValidateExecuteFileWithSource(path)
+  return ops
+}
+
+export interface ReadAndValidateExecuteFileResult {
+  ops: PendingFile
+  sourceActions: string[]
+}
+
+export async function readAndValidateExecuteFileWithSource(path: string): Promise<ReadAndValidateExecuteFileResult> {
   const raw = await readFile(path, 'utf8')
   let parsed: unknown
   try {
@@ -64,15 +53,24 @@ export async function readAndValidateExecuteFile(path: string): Promise<PendingF
     throw new Error(`Invalid execute file: ${message}`)
   }
 
-  const pending = parsedResult.output as PendingFile
+  const { pending, sourceActions, actionErrors } = normalizeActionInputs(parsedResult.output as ExecuteInputFile)
+  if (actionErrors.length)
+    throw new Error(`Invalid execute file: ${actionErrors.join('; ')}`)
+
   const customErrors = validateExecuteRules(pending)
   if (customErrors.length)
     throw new Error(`Invalid execute file: ${customErrors.join('; ')}`)
 
-  return pending
+  return {
+    ops: pending,
+    sourceActions,
+  }
 }
 
-export async function writeExecuteFile(path: string, pending: PendingFile): Promise<void> {
+export type ExecuteWritableOp = Omit<PendingOp, 'action'> & { action: string }
+export type ExecuteWritableFile = ExecuteWritableOp[]
+
+export async function writeExecuteFile(path: string, pending: ExecuteWritableFile): Promise<void> {
   const content = stringify(pending)
   await mkdir(dirname(path), { recursive: true })
   await writeFile(path, content.endsWith('\n') ? content : `${content}\n`, 'utf8')
@@ -148,4 +146,42 @@ function isNonEmptyString(value: unknown): value is string {
 
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every(entry => typeof entry === 'string') && value.length > 0
+}
+
+interface ExecuteInputOp extends Omit<ExecuteWritableOp, 'action'> {
+  action: string
+}
+
+type ExecuteInputFile = ExecuteInputOp[]
+
+function normalizeActionInputs(pending: ExecuteInputFile): {
+  pending: PendingFile
+  sourceActions: string[]
+  actionErrors: string[]
+} {
+  const normalized: PendingFile = []
+  const sourceActions: string[] = []
+  const actionErrors: string[] = []
+
+  for (const [index, op] of pending.entries()) {
+    const sourceAction = op.action
+    sourceActions.push(sourceAction)
+
+    const action = resolvePendingAction(sourceAction)
+    if (!action) {
+      actionErrors.push(`[${index}]: unknown action: ${sourceAction}`)
+      continue
+    }
+
+    normalized.push({
+      ...op,
+      action,
+    } as PendingOp)
+  }
+
+  return {
+    pending: normalized,
+    sourceActions,
+    actionErrors,
+  }
 }

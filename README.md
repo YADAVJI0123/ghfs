@@ -55,7 +55,7 @@ Note: execution merge order is `execute.yml` -> `execute.md` -> `per-issue` gene
 ```md
 close #123 #234
 set-title #125 "New title"
-add-tag #125 bug, enhancement
+label #125 bug, enhancement
 ```
 
 ### 2) Per-issue operations

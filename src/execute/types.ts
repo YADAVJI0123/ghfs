@@ -1,23 +1,6 @@
-export type PendingAction
-  = | 'close'
-    | 'reopen'
-    | 'set-title'
-    | 'set-body'
-    | 'add-comment'
-    | 'add-labels'
-    | 'remove-labels'
-    | 'set-labels'
-    | 'add-assignees'
-    | 'remove-assignees'
-    | 'set-assignees'
-    | 'set-milestone'
-    | 'clear-milestone'
-    | 'lock'
-    | 'unlock'
-    | 'request-reviewers'
-    | 'remove-reviewers'
-    | 'mark-ready-for-review'
-    | 'convert-to-draft'
+import type { PendingAction } from './actions'
+
+export type { PendingAction, PendingActionAlias, PendingActionInput } from './actions'
 
 export interface PendingOpBase {
   number: number

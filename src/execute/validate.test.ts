@@ -65,6 +65,36 @@ describe('readAndValidateExecuteFile', () => {
     await cleanupTempFile(file)
   })
 
+  it('accepts case-insensitive canonical and alias actions', async () => {
+    const file = await createTempExecuteFile([
+      '- action: ClOsE',
+      '  number: 1',
+      '- action: LaBeL',
+      '  number: 2',
+      '  labels: [bug]',
+      '',
+    ].join('\n'))
+
+    await expect(readAndValidateExecuteFile(file)).resolves.toEqual([
+      {
+        action: 'close',
+        number: 1,
+      },
+      {
+        action: 'add-labels',
+        number: 2,
+        labels: ['bug'],
+      },
+    ])
+    await cleanupTempFile(file)
+  })
+
+  it('throws for unknown mixed-case action', async () => {
+    const file = await createTempExecuteFile(`- action: UnKnOwN\n  number: 1\n`)
+    await expect(readAndValidateExecuteFile(file)).rejects.toThrow(/unknown action: UnKnOwN/)
+    await cleanupTempFile(file)
+  })
+
   it('throws for invalid yaml syntax', async () => {
     const file = await createTempExecuteFile(`- action: close\n  number: [\n`)
     await expect(readAndValidateExecuteFile(file)).rejects.toThrow(/Failed to parse execute YAML/)

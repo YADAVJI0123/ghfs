@@ -3,7 +3,7 @@ import { writeFile } from 'node:fs/promises'
 import { dirname, join } from 'pathe'
 import { EXECUTE_MD_FILE_NAME } from '../../constants'
 import { pathExists } from '../../utils/fs'
-import { readAndValidateExecuteFile, validateExecuteRules, writeExecuteFile } from '../validate'
+import { readAndValidateExecuteFileWithSource, validateExecuteRules, writeExecuteFile } from '../validate'
 import { readExecuteMdFile, stringifyExecuteMd } from './execute-md'
 import { loadPerItemSource } from './per-item'
 
@@ -11,7 +11,8 @@ export async function loadExecuteSources(executeFilePath: string): Promise<Execu
   const storageDir = dirname(executeFilePath)
   const executeMdPath = join(storageDir, EXECUTE_MD_FILE_NAME)
 
-  const ymlOps = await readAndValidateExecuteFile(executeFilePath)
+  const yml = await readAndValidateExecuteFileWithSource(executeFilePath)
+  const ymlOps = yml.ops
   const executeMd = await readExecuteMdFile(executeMdPath)
   const perItem = await loadPerItemSource(storageDir)
 
@@ -24,7 +25,13 @@ export async function loadExecuteSources(executeFilePath: string): Promise<Execu
     ops: mergedOps,
     warnings: [...executeMd.warnings, ...perItem.warnings],
     async writeRemaining(remainingIndexes) {
-      const ymlRemaining = ymlOps.filter((_, index) => remainingIndexes.has(index))
+      const ymlRemaining = ymlOps
+        .map((op, index) => ({ op, index }))
+        .filter(item => remainingIndexes.has(item.index))
+        .map(({ op, index }) => ({
+          ...op,
+          action: yml.sourceActions[index] ?? op.action,
+        }))
       await writeExecuteFile(executeFilePath, ymlRemaining)
 
       if (!await pathExists(executeMdPath))

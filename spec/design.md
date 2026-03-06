@@ -158,6 +158,18 @@ Each operation includes:
 - optional: `ifUnchangedSince`
 - action payload fields (e.g. `title`, `body`, `labels`, `assignees`, `reviewers`, `milestone`, `reason`)
 
+Action matching is case-insensitive for both `execute.yml` and `execute.md`.
+Aliases are accepted and normalized to canonical action names internally.
+Current aliases include:
+- `open` -> `reopen`
+- `closes` -> `close`
+- `label` / `labels` / `tags` / `add-tag` -> `add-labels`
+- `assign` / `assignee` / `assignees` -> `add-assignees`
+- `title` / `retitle` -> `set-title`
+- `ready` / `undraft` -> `mark-ready-for-review`
+- `draft` -> `convert-to-draft`
+- `comment` -> `add-comment`
+
 Supported actions:
 - `close`
 - `reopen`

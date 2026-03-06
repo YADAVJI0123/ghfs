@@ -20,6 +20,7 @@ export interface ExecuteMdSingleLine {
 export interface ExecuteMdMultiLine {
   kind: 'multi'
   action: PendingSimpleOp['action']
+  command: string
   opIndexes: number[]
 }
 
@@ -33,6 +34,6 @@ export interface ExecuteMdParsed {
 
 export type ExecuteMdLineParseResult
   = | { kind: 'single', op: PendingOp }
-    | { kind: 'multi', action: PendingSimpleOp['action'], numbers: number[] }
+    | { kind: 'multi', action: PendingSimpleOp['action'], command: string, numbers: number[] }
     | { kind: 'warning', message: string }
     | undefined

@@ -2,6 +2,7 @@ import type { PendingSimpleOp } from '../types'
 import type { ExecuteMdLineParseResult, ExecuteMdParsed } from './types'
 import { readFile } from 'node:fs/promises'
 import { pathExists } from '../../utils/fs'
+import { resolvePendingAction } from '../actions'
 
 const MULTI_SIMPLE_ACTIONS = new Set<PendingSimpleOp['action']>([
   'close',
@@ -23,17 +24,27 @@ export function parseExecuteMdLine(line: string): ExecuteMdLineParseResult {
   if (tokens.length === 0)
     return undefined
 
-  const [command, ...args] = tokens
+  const [commandInput, ...args] = tokens
+  const command = resolvePendingAction(commandInput)
+  if (!command)
+    return { kind: 'warning', message: `unrecognized action pattern: ${commandInput}` }
+
   if (command === 'set-title')
     return parseSetTitle(args)
 
-  if (command === 'add-tag')
-    return parseAddTag(args)
+  if (command === 'add-labels')
+    return parseAddLabels(args, commandInput)
+
+  if (command === 'add-assignees')
+    return parseAddAssignees(args, commandInput)
+
+  if (command === 'add-comment')
+    return parseAddComment(args, commandInput)
 
   if (MULTI_SIMPLE_ACTIONS.has(command as PendingSimpleOp['action']))
-    return parseMultiSimpleAction(command as PendingSimpleOp['action'], args)
+    return parseMultiSimpleAction(command as PendingSimpleOp['action'], args, commandInput)
 
-  return { kind: 'warning', message: `unrecognized action pattern: ${command}` }
+  return { kind: 'warning', message: `unrecognized action pattern: ${commandInput}` }
 }
 
 export async function readExecuteMdFile(path: string): Promise<ExecuteMdParsed> {
@@ -76,7 +87,7 @@ export function parseExecuteMd(raw: string): ExecuteMdParsed {
       opIndexes.push(ops.length)
       ops.push({ action: parsed.action, number })
     }
-    parsedLines.push({ kind: 'multi', action: parsed.action, opIndexes })
+    parsedLines.push({ kind: 'multi', action: parsed.action, command: parsed.command, opIndexes })
   }
 
   return { ops, warnings, lines: parsedLines }
@@ -102,7 +113,7 @@ export function stringifyExecuteMd(parsed: ExecuteMdParsed, remainingOpIndexes: 
       .filter((value): value is number => typeof value === 'number')
 
     if (numbers.length > 0)
-      lines.push(`${line.action} ${numbers.map(number => `#${number}`).join(' ')}`)
+      lines.push(`${line.command} ${numbers.map(number => `#${number}`).join(' ')}`)
   }
 
   return `${lines.join('\n')}\n`
@@ -126,13 +137,13 @@ function parseSetTitle(args: string[]): ExecuteMdLineParseResult {
   }
 }
 
-function parseAddTag(args: string[]): ExecuteMdLineParseResult {
+function parseAddLabels(args: string[], command: string): ExecuteMdLineParseResult {
   if (args.length < 2)
-    return { kind: 'warning', message: 'add-tag expects: add-tag #<number> <tag1, tag2>' }
+    return { kind: 'warning', message: `${command} expects: ${command} #<number> <label1, label2>` }
 
   const number = parseIssueRef(args[0])
   if (!number)
-    return { kind: 'warning', message: 'add-tag expects a single issue reference (#123)' }
+    return { kind: 'warning', message: `${command} expects a single issue reference (#123)` }
 
   const labels = args
     .slice(1)
@@ -141,7 +152,7 @@ function parseAddTag(args: string[]): ExecuteMdLineParseResult {
     .filter(Boolean)
 
   if (labels.length === 0)
-    return { kind: 'warning', message: 'add-tag requires at least one tag' }
+    return { kind: 'warning', message: `${command} requires at least one label` }
 
   return {
     kind: 'single',
@@ -153,18 +164,68 @@ function parseAddTag(args: string[]): ExecuteMdLineParseResult {
   }
 }
 
-function parseMultiSimpleAction(action: PendingSimpleOp['action'], args: string[]): ExecuteMdLineParseResult {
+function parseAddAssignees(args: string[], command: string): ExecuteMdLineParseResult {
+  if (args.length < 2)
+    return { kind: 'warning', message: `${command} expects: ${command} #<number> <assignee1, assignee2>` }
+
+  const number = parseIssueRef(args[0])
+  if (!number)
+    return { kind: 'warning', message: `${command} expects a single issue reference (#123)` }
+
+  const assignees = args
+    .slice(1)
+    .flatMap(value => value.split(','))
+    .map(value => value.trim())
+    .filter(Boolean)
+
+  if (assignees.length === 0)
+    return { kind: 'warning', message: `${command} requires at least one assignee` }
+
+  return {
+    kind: 'single',
+    op: {
+      action: 'add-assignees',
+      number,
+      assignees,
+    },
+  }
+}
+
+function parseAddComment(args: string[], command: string): ExecuteMdLineParseResult {
+  if (args.length < 2)
+    return { kind: 'warning', message: `${command} expects: ${command} #<number> "<comment>"` }
+
+  const number = parseIssueRef(args[0])
+  if (!number)
+    return { kind: 'warning', message: `${command} expects a single issue reference (#123)` }
+
+  const body = args.slice(1).join(' ').trim()
+  if (!body)
+    return { kind: 'warning', message: `${command} requires a non-empty comment` }
+
+  return {
+    kind: 'single',
+    op: {
+      action: 'add-comment',
+      number,
+      body,
+    },
+  }
+}
+
+function parseMultiSimpleAction(action: PendingSimpleOp['action'], args: string[], command: string): ExecuteMdLineParseResult {
   const numbers = args.map(parseIssueRef)
   if (numbers.length === 0 || numbers.some(number => !number)) {
     return {
       kind: 'warning',
-      message: `${action} expects one or more issue references (#123 #456)`,
+      message: `${command} expects one or more issue references (#123 #456)`,
     }
   }
 
   return {
     kind: 'multi',
     action,
+    command,
     numbers: numbers as number[],
   }
 }

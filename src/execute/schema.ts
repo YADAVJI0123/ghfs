@@ -2,6 +2,7 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'pathe'
 import { EXECUTE_MD_FILE_NAME, EXECUTE_SCHEMA_RELATIVE_PATH } from '../constants'
 import { pathExists } from '../utils/fs'
+import { PENDING_ACTION_INPUTS } from './actions'
 
 export const executeSchema = {
   $id: 'https://ghfs.dev/schema/execute.json',
@@ -14,27 +15,7 @@ export const executeSchema = {
       number: { type: 'number' },
       action: {
         type: 'string',
-        enum: [
-          'close',
-          'reopen',
-          'set-title',
-          'set-body',
-          'add-comment',
-          'add-labels',
-          'remove-labels',
-          'set-labels',
-          'add-assignees',
-          'remove-assignees',
-          'set-assignees',
-          'set-milestone',
-          'clear-milestone',
-          'lock',
-          'unlock',
-          'request-reviewers',
-          'remove-reviewers',
-          'mark-ready-for-review',
-          'convert-to-draft',
-        ],
+        enum: [...PENDING_ACTION_INPUTS],
       },
       ifUnchangedSince: {
         type: 'string',
@@ -66,6 +47,7 @@ export const executeSchema = {
 export const EXECUTE_FILE_PLACEHOLDER = [
   `# yaml-language-server: $schema=./${EXECUTE_SCHEMA_RELATIVE_PATH}`,
   '# Add operations as YAML list items, then run: ghfs execute --run',
+  '# Action names are case-insensitive and support aliases (for example: label, assign, comment).',
   '# - action: close',
   '#   number: 123',
   '[]',
@@ -74,7 +56,11 @@ export const EXECUTE_FILE_PLACEHOLDER = [
 
 export const EXECUTE_MD_FILE_PLACEHOLDER = [
   '# Add one action per line, then run: ghfs execute --run',
+  '# Command names are case-insensitive and support aliases.',
   '# close #123 #124',
+  '# label #123 bug, triage',
+  '# assign #123 antfu',
+  '# comment #123 "Need more context"',
   '# set-title #123 "new title"',
   '# add-tag #123 foo, bar',
   '',

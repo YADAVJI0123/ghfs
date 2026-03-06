@@ -16,12 +16,18 @@ describe('ensureExecuteArtifacts', () => {
     const dir = await createTempDir()
     const executeFilePath = join(dir, 'execute.yml')
     const { schemaPath } = await ensureExecuteArtifacts(executeFilePath)
+    const schema = JSON.parse(await readFile(schemaPath, 'utf8')) as { items: { properties: { action: { enum: string[] } } } }
 
     expect(schemaPath).toBe(getExecuteSchemaPath(dir))
     await expect(readFile(executeFilePath, 'utf8')).resolves.toBe(EXECUTE_FILE_PLACEHOLDER)
     await expect(readAndValidateExecuteFile(executeFilePath)).resolves.toEqual([])
     await expect(readFile(join(dir, 'execute.md'), 'utf8')).resolves.toBe(EXECUTE_MD_FILE_PLACEHOLDER)
     await expect(readFile(schemaPath, 'utf8')).resolves.toContain('\"$id\": \"https://ghfs.dev/schema/execute.json\"')
+    expect(schema.items.properties.action.enum).toContain('label')
+    expect(schema.items.properties.action.enum).toContain('assign')
+    expect(schema.items.properties.action.enum).toContain('comment')
+    expect(EXECUTE_FILE_PLACEHOLDER).toContain('case-insensitive')
+    expect(EXECUTE_MD_FILE_PLACEHOLDER).toContain('case-insensitive')
   })
 
   it('does not overwrite existing execute file and schema', async () => {
