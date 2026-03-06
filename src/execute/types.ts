@@ -1,10 +1,8 @@
-import type { PendingAction } from './actions'
-
-export type { PendingAction, PendingActionAlias, PendingActionInput } from './actions'
+import type { ActionName } from './actions'
 
 export interface PendingOpBase {
   number: number
-  action: PendingAction
+  action: ActionName
   ifUnchangedSince?: string
 }
 
@@ -65,14 +63,14 @@ export type PendingOp
 
 export type PendingFile = PendingOp[]
 
-export const PR_ONLY_ACTIONS: PendingAction[] = [
+export const PR_ONLY_ACTIONS: ActionName[] = [
   'request-reviewers',
   'remove-reviewers',
   'mark-ready-for-review',
   'convert-to-draft',
 ]
 
-export const ACTIONS_WITH_BODY: PendingAction[] = ['set-body', 'add-comment', 'close-with-comment']
-export const ACTIONS_WITH_LABELS: PendingAction[] = ['add-labels', 'remove-labels', 'set-labels']
-export const ACTIONS_WITH_ASSIGNEES: PendingAction[] = ['add-assignees', 'remove-assignees', 'set-assignees']
-export const ACTIONS_WITH_REVIEWERS: PendingAction[] = ['request-reviewers', 'remove-reviewers']
+export const ACTIONS_WITH_BODY: ActionName[] = ['set-body', 'add-comment', 'close-with-comment']
+export const ACTIONS_WITH_LABELS: ActionName[] = ['add-labels', 'remove-labels', 'set-labels']
+export const ACTIONS_WITH_ASSIGNEES: ActionName[] = ['add-assignees', 'remove-assignees', 'set-assignees']
+export const ACTIONS_WITH_REVIEWERS: ActionName[] = ['request-reviewers', 'remove-reviewers']

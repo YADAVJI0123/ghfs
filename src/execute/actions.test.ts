@@ -1,24 +1,24 @@
 import { describe, expect, it } from 'vitest'
-import { PENDING_ACTION_ALIAS_MAP, PENDING_ACTION_ALIASES, PENDING_ACTIONS, resolvePendingAction } from './actions'
+import { ACTION_ALIASES, ACTIONS_ALIAS_MAP, ACTIONS_SUPPORTED, resolveActionName } from './actions'
 
-describe('resolvePendingAction', () => {
+describe('resolveActionName', () => {
   it('resolves canonical action names case-insensitively', () => {
-    for (const action of PENDING_ACTIONS) {
-      expect(resolvePendingAction(action)).toBe(action)
-      expect(resolvePendingAction(action.toUpperCase())).toBe(action)
+    for (const action of ACTIONS_SUPPORTED) {
+      expect(resolveActionName(action)).toBe(action)
+      expect(resolveActionName(action.toUpperCase())).toBe(action)
     }
   })
 
   it('resolves aliases case-insensitively', () => {
-    for (const alias of PENDING_ACTION_ALIASES) {
-      expect(resolvePendingAction(alias)).toBe(PENDING_ACTION_ALIAS_MAP[alias])
-      expect(resolvePendingAction(alias.toUpperCase())).toBe(PENDING_ACTION_ALIAS_MAP[alias])
+    for (const alias of ACTION_ALIASES) {
+      expect(resolveActionName(alias)).toBe(ACTIONS_ALIAS_MAP[alias])
+      expect(resolveActionName(alias.toUpperCase())).toBe(ACTIONS_ALIAS_MAP[alias])
     }
   })
 
   it('returns undefined for unknown actions', () => {
-    expect(resolvePendingAction('unknown')).toBeUndefined()
-    expect(resolvePendingAction('')).toBeUndefined()
-    expect(resolvePendingAction('   ')).toBeUndefined()
+    expect(resolveActionName('unknown')).toBeUndefined()
+    expect(resolveActionName('')).toBeUndefined()
+    expect(resolveActionName('   ')).toBeUndefined()
   })
 })

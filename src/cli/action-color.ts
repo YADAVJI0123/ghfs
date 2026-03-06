@@ -1,34 +1,12 @@
-import type { PendingAction } from '../execute/types'
+import type { ActionName } from '../execute/actions'
 import c from 'ansis'
-
-const ACTION_COLOR_HEX: Record<PendingAction, string> = {
-  'close': '#ef4444',
-  'close-with-comment': '#fb7185',
-  'reopen': '#22c55e',
-  'set-title': '#3b82f6',
-  'set-body': '#06b6d4',
-  'add-comment': '#f97316',
-  'add-labels': '#84cc16',
-  'remove-labels': '#f43f5e',
-  'set-labels': '#eab308',
-  'add-assignees': '#10b981',
-  'remove-assignees': '#fb7185',
-  'set-assignees': '#0ea5e9',
-  'set-milestone': '#6366f1',
-  'clear-milestone': '#f59e0b',
-  'lock': '#a855f7',
-  'unlock': '#14b8a6',
-  'request-reviewers': '#38bdf8',
-  'remove-reviewers': '#e879f9',
-  'mark-ready-for-review': '#34d399',
-  'convert-to-draft': '#f472b6',
-}
+import { ACTIONS_COLOR_HEX } from '../execute/actions'
 
 export function colorizeAction(action: string, enabled = true): string {
   if (!enabled)
     return action
 
-  const colorHex = ACTION_COLOR_HEX[action as PendingAction]
+  const colorHex = ACTIONS_COLOR_HEX[action as ActionName]
   if (!colorHex)
     return c.white(action)
 

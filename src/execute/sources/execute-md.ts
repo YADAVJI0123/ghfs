@@ -2,7 +2,7 @@ import type { PendingSimpleOp } from '../types'
 import type { ExecuteMdLineParseResult, ExecuteMdParsed } from './types'
 import { readFile } from 'node:fs/promises'
 import { pathExists } from '../../utils/fs'
-import { resolvePendingAction } from '../actions'
+import { resolveActionName } from '../actions'
 
 const MULTI_SIMPLE_ACTIONS = new Set<PendingSimpleOp['action']>([
   'close',
@@ -25,7 +25,7 @@ export function parseExecuteMdLine(line: string): ExecuteMdLineParseResult {
     return undefined
 
   const [commandInput, ...args] = tokens
-  const command = resolvePendingAction(commandInput)
+  const command = resolveActionName(commandInput)
   if (!command)
     return { kind: 'warning', message: `unrecognized action pattern: ${commandInput}` }
 

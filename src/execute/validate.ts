@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname } from 'pathe'
 import * as v from 'valibot'
 import { parse, stringify } from 'yaml'
-import { resolvePendingAction } from './actions'
+import { resolveActionName } from './actions'
 
 const LOCK_REASONS = ['resolved', 'off-topic', 'too heated', 'too-heated', 'spam'] as const
 
@@ -168,7 +168,7 @@ function normalizeActionInputs(pending: ExecuteInputFile): {
     const sourceAction = op.action
     sourceActions.push(sourceAction)
 
-    const action = resolvePendingAction(sourceAction)
+    const action = resolveActionName(sourceAction)
     if (!action) {
       actionErrors.push(`[${index}]: unknown action: ${sourceAction}`)
       continue

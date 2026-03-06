@@ -2,7 +2,7 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'pathe'
 import { EXECUTE_MD_FILE_NAME, EXECUTE_SCHEMA_RELATIVE_PATH } from '../constants'
 import { pathExists } from '../utils/fs'
-import { PENDING_ACTION_INPUTS } from './actions'
+import { ACTION_INPUTS } from './actions'
 
 export const executeSchema = {
   $id: 'https://ghfs.dev/schema/execute.json',
@@ -15,7 +15,7 @@ export const executeSchema = {
       number: { type: 'number' },
       action: {
         type: 'string',
-        enum: [...PENDING_ACTION_INPUTS],
+        enum: [...ACTION_INPUTS],
       },
       ifUnchangedSince: {
         type: 'string',
