@@ -160,9 +160,11 @@ Each operation includes:
 
 Action matching is case-insensitive for both `execute.yml` and `execute.md`.
 Aliases are accepted and normalized to canonical action names internally.
+`execute.md` comment lines support `#` and `//`, and HTML comments (`<!-- ... -->`, including multi-line blocks). Comments are preserved on writeback.
 Current aliases include:
 - `open` -> `reopen`
 - `closes` -> `close`
+- `close-comment` / `comment-close` / `close-and-comment` / `comment-and-close` -> `close-with-comment`
 - `label` / `labels` / `tags` / `add-tag` -> `add-labels`
 - `assign` / `assignee` / `assignees` -> `add-assignees`
 - `title` / `retitle` -> `set-title`
@@ -172,6 +174,7 @@ Current aliases include:
 
 Supported actions:
 - `close`
+- `close-with-comment`
 - `reopen`
 - `set-title`
 - `set-body`

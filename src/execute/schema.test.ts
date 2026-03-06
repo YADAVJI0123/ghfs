@@ -26,6 +26,8 @@ describe('ensureExecuteArtifacts', () => {
     expect(schema.items.properties.action.enum).toContain('label')
     expect(schema.items.properties.action.enum).toContain('assign')
     expect(schema.items.properties.action.enum).toContain('comment')
+    expect(schema.items.properties.action.enum).toContain('close-with-comment')
+    expect(schema.items.properties.action.enum).toContain('close-comment')
     expect(EXECUTE_FILE_PLACEHOLDER).toContain('case-insensitive')
     expect(EXECUTE_MD_FILE_PLACEHOLDER).toContain('case-insensitive')
   })

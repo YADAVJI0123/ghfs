@@ -20,6 +20,7 @@ describe('loadExecuteSources', () => {
       'open #2 #3',
       'title #4 "new title"',
       'LaBeL #5 foo, bar',
+      'close-comment #6 "done"',
       '',
     ].join('\n'), 'utf8')
 
@@ -30,6 +31,7 @@ describe('loadExecuteSources', () => {
       { action: 'reopen', number: 3 },
       { action: 'set-title', number: 4, title: 'new title' },
       { action: 'add-labels', number: 5, labels: ['foo', 'bar'] },
+      { action: 'close-with-comment', number: 6, body: 'done' },
     ])
   })
 
@@ -65,6 +67,36 @@ describe('loadExecuteSources', () => {
 
     await loaded.writeRemaining(new Set([1]))
     await expect(readFile(join(dir, 'execute.md'), 'utf8')).resolves.toBe('ClOsEs #11\n\n')
+  })
+
+  it('preserves // and html comments when writing remaining execute-md operations', async () => {
+    const dir = await createTempDir()
+    await writeFile(join(dir, 'execute.yml'), '[]\n', 'utf8')
+    await writeFile(join(dir, 'execute.md'), [
+      '// comment line',
+      '<!--',
+      'keep this block',
+      '-->',
+      'close #10 #11',
+      '',
+    ].join('\n'), 'utf8')
+
+    const loaded = await loadExecuteSources(join(dir, 'execute.yml'))
+    expect(loaded.ops).toEqual([
+      { action: 'close', number: 10 },
+      { action: 'close', number: 11 },
+    ])
+
+    await loaded.writeRemaining(new Set([1]))
+    await expect(readFile(join(dir, 'execute.md'), 'utf8')).resolves.toBe([
+      '// comment line',
+      '<!--',
+      'keep this block',
+      '-->',
+      'close #11',
+      '',
+      '',
+    ].join('\n'))
   })
 
   it('preserves original YAML action text when writing remaining operations', async () => {

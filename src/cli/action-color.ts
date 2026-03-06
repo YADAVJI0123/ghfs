@@ -3,6 +3,7 @@ import c from 'ansis'
 
 const ACTION_COLOR_HEX: Record<PendingAction, string> = {
   'close': '#ef4444',
+  'close-with-comment': '#fb7185',
   'reopen': '#22c55e',
   'set-title': '#3b82f6',
   'set-body': '#06b6d4',
@@ -81,6 +82,7 @@ function formatOperationValues(op: CliOperationDisplayInput): string | undefined
       return wrapTextValue(op.title)
     case 'set-body':
     case 'add-comment':
+    case 'close-with-comment':
       return wrapTextValue(op.body)
     case 'add-labels':
     case 'remove-labels':

@@ -15,7 +15,7 @@ const MULTI_SIMPLE_ACTIONS = new Set<PendingSimpleOp['action']>([
 
 export function parseExecuteMdLine(line: string): ExecuteMdLineParseResult {
   const trimmed = line.trim()
-  if (!trimmed || trimmed.startsWith('#'))
+  if (!trimmed || isCommentLine(trimmed))
     return undefined
 
   const tokens = tokenizeCommand(trimmed)
@@ -41,6 +41,9 @@ export function parseExecuteMdLine(line: string): ExecuteMdLineParseResult {
   if (command === 'add-comment')
     return parseAddComment(args, commandInput)
 
+  if (command === 'close-with-comment')
+    return parseCloseWithComment(args, commandInput)
+
   if (MULTI_SIMPLE_ACTIONS.has(command as PendingSimpleOp['action']))
     return parseMultiSimpleAction(command as PendingSimpleOp['action'], args, commandInput)
 
@@ -61,8 +64,24 @@ export function parseExecuteMd(raw: string): ExecuteMdParsed {
   const ops = [] as ExecuteMdParsed['ops']
   const parsedLines = [] as ExecuteMdParsed['lines']
   const warnings: string[] = []
+  let inHtmlCommentBlock = false
 
   for (const [lineIndex, rawLine] of lines.entries()) {
+    const trimmed = rawLine.trim()
+    if (inHtmlCommentBlock) {
+      parsedLines.push({ kind: 'raw', raw: rawLine })
+      if (trimmed.includes('-->'))
+        inHtmlCommentBlock = false
+      continue
+    }
+
+    if (trimmed.startsWith('<!--')) {
+      parsedLines.push({ kind: 'raw', raw: rawLine })
+      if (!trimmed.includes('-->'))
+        inHtmlCommentBlock = true
+      continue
+    }
+
     const parsed = parseExecuteMdLine(rawLine)
     if (!parsed) {
       parsedLines.push({ kind: 'raw', raw: rawLine })
@@ -213,6 +232,28 @@ function parseAddComment(args: string[], command: string): ExecuteMdLineParseRes
   }
 }
 
+function parseCloseWithComment(args: string[], command: string): ExecuteMdLineParseResult {
+  if (args.length < 2)
+    return { kind: 'warning', message: `${command} expects: ${command} #<number> "<comment>"` }
+
+  const number = parseIssueRef(args[0])
+  if (!number)
+    return { kind: 'warning', message: `${command} expects a single issue reference (#123)` }
+
+  const body = args.slice(1).join(' ').trim()
+  if (!body)
+    return { kind: 'warning', message: `${command} requires a non-empty comment` }
+
+  return {
+    kind: 'single',
+    op: {
+      action: 'close-with-comment',
+      number,
+      body,
+    },
+  }
+}
+
 function parseMultiSimpleAction(action: PendingSimpleOp['action'], args: string[], command: string): ExecuteMdLineParseResult {
   const numbers = args.map(parseIssueRef)
   if (numbers.length === 0 || numbers.some(number => !number)) {
@@ -294,4 +335,10 @@ function tokenizeCommand(value: string): string[] | undefined {
   }
 
   return tokens
+}
+
+function isCommentLine(trimmed: string): boolean {
+  return trimmed.startsWith('#')
+    || trimmed.startsWith('//')
+    || trimmed.startsWith('<!--')
 }

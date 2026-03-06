@@ -29,6 +29,17 @@ describe('validateExecuteRules', () => {
     expect(validateExecuteRules(execute)).toContain('[0]: request-reviewers requires reviewers[]')
   })
 
+  it('fails when close-with-comment body is missing', () => {
+    const execute = [
+      {
+        number: 1,
+        action: 'close-with-comment',
+      },
+    ] as PendingFile
+
+    expect(validateExecuteRules(execute)).toContain('[0]: close-with-comment requires body')
+  })
+
   it('fails for invalid datetime in ifUnchangedSince', () => {
     const execute: PendingFile = [
       {
@@ -72,6 +83,9 @@ describe('readAndValidateExecuteFile', () => {
       '- action: LaBeL',
       '  number: 2',
       '  labels: [bug]',
+      '- action: COMMENT-AND-CLOSE',
+      '  number: 3',
+      '  body: done',
       '',
     ].join('\n'))
 
@@ -84,6 +98,11 @@ describe('readAndValidateExecuteFile', () => {
         action: 'add-labels',
         number: 2,
         labels: ['bug'],
+      },
+      {
+        action: 'close-with-comment',
+        number: 3,
+        body: 'done',
       },
     ])
     await cleanupTempFile(file)

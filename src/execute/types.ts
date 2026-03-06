@@ -19,7 +19,7 @@ export interface PendingBodyOp extends PendingOpBase {
 }
 
 export interface PendingCommentOp extends PendingOpBase {
-  action: 'add-comment'
+  action: 'add-comment' | 'close-with-comment'
   body: string
 }
 
@@ -72,7 +72,7 @@ export const PR_ONLY_ACTIONS: PendingAction[] = [
   'convert-to-draft',
 ]
 
-export const ACTIONS_WITH_BODY: PendingAction[] = ['set-body', 'add-comment']
+export const ACTIONS_WITH_BODY: PendingAction[] = ['set-body', 'add-comment', 'close-with-comment']
 export const ACTIONS_WITH_LABELS: PendingAction[] = ['add-labels', 'remove-labels', 'set-labels']
 export const ACTIONS_WITH_ASSIGNEES: PendingAction[] = ['add-assignees', 'remove-assignees', 'set-assignees']
 export const ACTIONS_WITH_REVIEWERS: PendingAction[] = ['request-reviewers', 'remove-reviewers']

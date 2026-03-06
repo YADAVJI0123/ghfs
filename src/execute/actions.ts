@@ -1,5 +1,6 @@
 export const PENDING_ACTIONS = [
   'close',
+  'close-with-comment',
   'reopen',
   'set-title',
   'set-body',
@@ -25,6 +26,10 @@ export type PendingAction = typeof PENDING_ACTIONS[number]
 export const PENDING_ACTION_ALIAS_MAP = {
   'open': 'reopen',
   'closes': 'close',
+  'close-comment': 'close-with-comment',
+  'comment-close': 'close-with-comment',
+  'close-and-comment': 'close-with-comment',
+  'comment-and-close': 'close-with-comment',
   'label': 'add-labels',
   'labels': 'add-labels',
   'tag': 'add-labels',

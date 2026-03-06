@@ -101,6 +101,7 @@ function validateOperationRules(key: string, op: PendingOp): string[] {
 
     case 'set-body':
     case 'add-comment':
+    case 'close-with-comment':
       if (!isNonEmptyString(op.body))
         errors.push(`${key}: ${op.action} requires body`)
       break

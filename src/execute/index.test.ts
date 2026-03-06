@@ -166,6 +166,48 @@ describe('executePendingChanges', () => {
 
     await cleanupTempFile(executeFilePath)
   })
+
+  it('applies close-with-comment by creating comment then closing', async () => {
+    const executeFilePath = await createTempExecuteFile(
+      [
+        '- action: close-with-comment',
+        '  number: 1',
+        '  body: done',
+        '',
+      ].join('\n'),
+    )
+
+    const calls: string[] = []
+    const actionAddComment = vi.fn(async () => {
+      calls.push('comment')
+    })
+    const actionClose = vi.fn(async () => {
+      calls.push('close')
+    })
+    const provider = createMockProvider({
+      actionAddComment,
+      actionClose,
+    })
+
+    const result = await executePendingChanges({
+      config: createConfig(),
+      repo: 'owner/repo',
+      token: 'test-token',
+      provider,
+      executeFilePath,
+      apply: true,
+      nonInteractive: true,
+      continueOnError: false,
+    })
+
+    expect(result.applied).toBe(1)
+    expect(actionAddComment).toHaveBeenCalledWith(1, 'done')
+    expect(actionClose).toHaveBeenCalledWith(1)
+    expect(calls).toEqual(['comment', 'close'])
+
+    await cleanupTempFile(executeFilePath)
+  })
+
   it('emits reporter lifecycle callbacks for apply mode', async () => {
     const executeFilePath = await createTempExecuteFile(
       [

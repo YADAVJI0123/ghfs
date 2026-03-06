@@ -56,7 +56,16 @@ Note: execution merge order is `execute.yml` -> `execute.md` -> `per-issue` gene
 close #123 #234
 set-title #125 "New title"
 label #125 bug, enhancement
+close-comment #126 "Closing this as completed"
 ```
+
+Action names in both `execute.yml` and `execute.md` are case-insensitive and support aliases, including:
+
+- `closes` -> `close`
+- `open` -> `reopen`
+- `close-comment` / `comment-close` / `close-and-comment` / `comment-and-close` -> `close-with-comment`
+
+`execute.md` also supports comment lines with `#` and `//`, plus HTML comment blocks using `<!-- ... -->`. These comments are preserved when operations are rewritten.
 
 ### 2) Per-issue operations
 

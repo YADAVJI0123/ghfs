@@ -273,6 +273,11 @@ async function applyOperation(provider: RepositoryProvider, op: PendingOp): Prom
       await provider.actionAddComment(op.number, op.body)
       break
 
+    case 'close-with-comment':
+      await provider.actionAddComment(op.number, op.body)
+      await provider.actionClose(op.number)
+      break
+
     case 'add-labels':
       await provider.actionAddLabels(op.number, op.labels)
       break

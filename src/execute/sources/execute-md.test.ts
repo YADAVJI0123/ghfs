@@ -130,6 +130,33 @@ describe('parseExecuteMdLine', () => {
     })
   })
 
+  it('parses close-with-comment and its aliases', () => {
+    expect(parseExecuteMdLine('close-with-comment #3 "closing now"')).toEqual({
+      kind: 'single',
+      op: {
+        action: 'close-with-comment',
+        number: 3,
+        body: 'closing now',
+      },
+    })
+    expect(parseExecuteMdLine('close-comment #3 "closing now"')).toEqual({
+      kind: 'single',
+      op: {
+        action: 'close-with-comment',
+        number: 3,
+        body: 'closing now',
+      },
+    })
+    expect(parseExecuteMdLine('comment-and-close #3 done')).toEqual({
+      kind: 'single',
+      op: {
+        action: 'close-with-comment',
+        number: 3,
+        body: 'done',
+      },
+    })
+  })
+
   it('returns warning for malformed quoted text', () => {
     expect(parseExecuteMdLine('set-title #1 "oops')).toEqual({
       kind: 'warning',
@@ -148,6 +175,8 @@ describe('parseExecuteMdLine', () => {
     expect(parseExecuteMdLine('')).toBeUndefined()
     expect(parseExecuteMdLine('   ')).toBeUndefined()
     expect(parseExecuteMdLine('# close #1')).toBeUndefined()
+    expect(parseExecuteMdLine('// close #1')).toBeUndefined()
+    expect(parseExecuteMdLine('<!-- close #1 -->')).toBeUndefined()
   })
 })
 
@@ -172,6 +201,30 @@ describe('stringifyExecuteMd', () => {
       'set-title #4 "new title"',
       'add-tag #5 foo, bar',
       'unknown #6',
+      '',
+    ].join('\n'))
+  })
+
+  it('preserves // and html comments during writeback', () => {
+    const parsed = parseExecuteMd([
+      '// inline comment',
+      '<!--',
+      '  html comment block',
+      '-->',
+      'close #1 #2',
+      '',
+    ].join('\n'))
+
+    expect(parsed.warnings).toEqual([])
+
+    const output = stringifyExecuteMd(parsed, new Set([1]))
+    expect(output).toBe([
+      '// inline comment',
+      '<!--',
+      '  html comment block',
+      '-->',
+      'close #2',
+      '',
       '',
     ].join('\n'))
   })
