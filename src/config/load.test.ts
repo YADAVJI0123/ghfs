@@ -23,7 +23,7 @@ describe('resolveConfig', () => {
     expect(config.repo).toBe('')
     expect(config.sync.issues).toBe(true)
     expect(config.sync.pulls).toBe(true)
-    expect(config.sync.closed).toBe('existing')
+    expect(config.sync.closed).toBe(false)
     expect(config.sync.patches).toBe('open')
   })
 
