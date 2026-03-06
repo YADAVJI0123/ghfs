@@ -37,7 +37,7 @@ export async function prepareIssueCandidateSync(context: SyncContext, issue: Pro
     }
   }
 
-  if (state === 'closed' && context.config.sync.closed === 'existing' && !paths.hasLocalFile) {
+  if (state === 'closed' && context.config.sync.closed === true && !paths.hasLocalFile) {
     delete context.syncState.items[String(number)]
     return {
       number,

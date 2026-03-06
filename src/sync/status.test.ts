@@ -94,7 +94,7 @@ function createConfig(cwd: string): GhfsResolvedConfig {
     sync: {
       issues: true,
       pulls: true,
-      closed: 'existing',
+      closed: false,
       patches: 'open',
     },
   }

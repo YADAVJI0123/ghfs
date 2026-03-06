@@ -38,13 +38,12 @@ export interface GhfsUserConfig {
     /**
      * When to sync closed issues and pull requests.
      *
-     * - `'existing'`: only sync closed issues and pull requests that already exist in the local filesystem.
-     * - `'all'`: sync all closed issues and pull requests.
+     * - `true`: sync all closed issues and pull requests.
      * - `false`: don't sync any closed issues and pull requests. And delete any existing closed issues and pull requests from the local filesystem.
      *
-     * @default 'existing'
+     * @default false
      */
-    closed?: 'existing' | 'all' | false
+    closed?: boolean
     /**
      * When to download the pull request patch files.
      *

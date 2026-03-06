@@ -1,22 +1,20 @@
 import type { IssueCandidates, SyncContext } from './sync-repository-types'
-import { resolvePaginateState, shouldSyncIssue } from './sync-repository-utils'
+import { shouldSyncIssue } from './sync-repository-utils'
 
 export async function fetchIssueCandidatesByPagination(context: SyncContext, since: string | undefined): Promise<IssueCandidates> {
   const issues: IssueCandidates['issues'] = []
   let scanned = 0
   const allOpenNumbers = context.config.sync.closed === false && !since ? new Set<number>() : undefined
-  const states = resolvePaginationStates(context, since)
+  const state = context.config.sync.closed === false ? 'open' : 'all'
 
-  for (const state of states) {
-    for await (const page of context.provider.paginateItems({ state, since })) {
-      for (const issue of page) {
-        if (!shouldSyncIssue(context.config.sync, issue))
-          continue
-        scanned += 1
-        issues.push(issue)
-        if (state === 'open' && allOpenNumbers)
-          allOpenNumbers.add(issue.number)
-      }
+  for await (const page of context.provider.paginateItems({ state, since })) {
+    for (const issue of page) {
+      if (!shouldSyncIssue(context.config.sync, issue))
+        continue
+      scanned += 1
+      issues.push(issue)
+      if (state === 'open' && allOpenNumbers)
+        allOpenNumbers.add(issue.number)
     }
   }
 
@@ -34,10 +32,4 @@ export async function fetchIssueCandidatesByNumbers(context: SyncContext, number
     issues,
     scanned: issues.length,
   }
-}
-
-function resolvePaginationStates(context: SyncContext, since: string | undefined): Array<'open' | 'closed' | 'all'> {
-  if (context.config.sync.closed === false)
-    return since ? ['open', 'closed'] : ['open']
-  return [resolvePaginateState(context.config.sync.closed)]
 }

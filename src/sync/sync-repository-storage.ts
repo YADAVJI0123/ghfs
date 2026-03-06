@@ -72,7 +72,7 @@ export async function handleClosedIssueByPolicy(input: ClosedIssuePolicyInput): 
     }
   }
 
-  if (context.config.sync.closed === 'existing' && !paths.hasLocalFile) {
+  if (context.config.sync.closed === true && !paths.hasLocalFile) {
     let patchesDeleted = 0
     if (kind === 'pull' && context.config.sync.patches !== 'all')
       patchesDeleted += await removePatchIfExists(context.storageDirAbsolute, number)

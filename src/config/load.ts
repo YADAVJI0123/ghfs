@@ -61,7 +61,7 @@ export async function resolveConfig(options: ResolveConfigOptions = {}): Promise
   const repo = merged.repo?.trim() || ''
   const issuesEnabled = merged.sync?.issues ?? true
   const pullsEnabled = merged.sync?.pulls ?? true
-  const closedMode = merged.sync?.closed ?? 'existing'
+  const closedMode = merged.sync?.closed ?? false
   const patchesMode = merged.sync?.patches ?? 'open'
 
   return {

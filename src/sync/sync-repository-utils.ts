@@ -24,10 +24,6 @@ export function addItemStats(counters: SyncCounters, stats: Pick<SyncCounters, '
   counters.patchesDeleted += stats.patchesDeleted
 }
 
-export function resolvePaginateState(closedMode: GhfsResolvedConfig['sync']['closed']): 'open' | 'all' {
-  return closedMode === false ? 'open' : 'all'
-}
-
 export function shouldSyncKind(sync: GhfsResolvedConfig['sync'], kind: IssueKind): boolean {
   return kind === 'issue' ? sync.issues : sync.pulls
 }
