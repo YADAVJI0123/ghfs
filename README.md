@@ -120,9 +120,10 @@ export default defineConfig({
 
 ## TODOs
 
-- [ ] `execute.md` file with human-friendly instructions (`close #123 #234`, `set-title #125 "New title"`).
+- [x] `execute.md` file with human-friendly instructions (`close #123 #234`, `set-title #125 "New title"`).
 - [x] Directly editing the `<5-digit-number>-<slug>.md` file to apply the operations.
 - [ ] Add a VS Code extension for guided sync/execute.
 - [ ] Documentation.
 - [x] Index page, and basic repo info
 - [x] Agent Skills.
+- [ ] Local Web UI for managing the local mirror.

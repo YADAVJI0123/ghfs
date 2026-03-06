@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseExecuteMdLine } from './execute-md-parser'
+import { parseExecuteMd, parseExecuteMdLine, stringifyExecuteMd } from './execute-md'
 
 describe('parseExecuteMdLine', () => {
   it('parses simple multi-target action', () => {
@@ -61,5 +61,31 @@ describe('parseExecuteMdLine', () => {
     expect(parseExecuteMdLine('')).toBeUndefined()
     expect(parseExecuteMdLine('   ')).toBeUndefined()
     expect(parseExecuteMdLine('# close #1')).toBeUndefined()
+  })
+})
+
+describe('stringifyExecuteMd', () => {
+  it('keeps raw lines and only remaining operations', () => {
+    const parsed = parseExecuteMd([
+      '# header',
+      'close #1 #2 #3',
+      'set-title #4 "new title"',
+      'add-tag #5 foo, bar',
+      'unknown #6',
+    ].join('\n'))
+
+    expect(parsed.warnings).toEqual([
+      'execute-md line 5: unrecognized action pattern: unknown',
+    ])
+
+    const output = stringifyExecuteMd(parsed, new Set([1, 3, 4]))
+    expect(output).toBe([
+      '# header',
+      'close #2',
+      'set-title #4 "new title"',
+      'add-tag #5 foo, bar',
+      'unknown #6',
+      '',
+    ].join('\n'))
   })
 })
