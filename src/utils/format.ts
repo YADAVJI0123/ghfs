@@ -5,10 +5,6 @@ export interface FormatIssueNumberOptions {
   kind?: IssueKind
 }
 
-export function describeAction(action: string, number: number, options: FormatIssueNumberOptions = {}): string {
-  return `${action} ${formatIssueNumber(number, options)}`
-}
-
 export function formatIssueNumber(number: number, options: FormatIssueNumberOptions = {}): string {
   const label = `#${number}`
   if (!options.repo)
@@ -24,7 +20,6 @@ export function toGitHubIssueUrl(repo: string, number: number, kind: IssueKind =
   const segment = kind === 'pull' ? 'pull' : 'issues'
   return `https://github.com/${repo}/${segment}/${number}`
 }
-
 export function formatValue(value: string | number | Date | undefined | null): string {
   if (value == null)
     return ''

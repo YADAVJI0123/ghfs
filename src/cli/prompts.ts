@@ -2,7 +2,7 @@ import type { ExecutePrompts } from '../execute'
 import type { PendingOp } from '../execute/types'
 import type { RepoDetectionCandidate } from '../types'
 import { cancel, confirm, isCancel, multiselect, password, select } from '@clack/prompts'
-import { describeAction } from '../utils/format'
+import { describeCliOperation } from './action-color'
 
 export async function promptForToken(): Promise<string | undefined> {
   const result = await password({
@@ -45,20 +45,26 @@ export async function promptRepoChoice(
   return result
 }
 
-export function createExecutePrompts(repo?: string): ExecutePrompts {
+export interface CreateExecutePromptsOptions {
+  repo?: string
+}
+
+export function createExecutePrompts(options: CreateExecutePromptsOptions = {}): ExecutePrompts {
   return {
-    selectOperations: ops => promptExecuteOperations(ops, repo),
+    selectOperations: ops => promptExecuteOperations(ops, options),
     confirmApply: confirmExecuteApply,
   }
 }
 
-async function promptExecuteOperations(ops: PendingOp[], repo?: string): Promise<number[] | undefined> {
+async function promptExecuteOperations(ops: PendingOp[], options: CreateExecutePromptsOptions): Promise<number[] | undefined> {
+  const selectedByDefault = ops.map((_, index) => index)
   const result = await multiselect<number>({
     message: 'Select operations to include',
     options: ops.map((op, index) => ({
-      label: `${index + 1}. ${describeAction(op.action, op.number, { repo })}`,
+      label: describeCliOperation(op, { tty: true, repo: options.repo }),
       value: index,
     })),
+    initialValues: selectedByDefault,
     required: false,
   })
 
@@ -72,7 +78,7 @@ async function promptExecuteOperations(ops: PendingOp[], repo?: string): Promise
 
 async function confirmExecuteApply(count: number): Promise<boolean | undefined> {
   const result = await confirm({
-    message: `Apply ${count} ${count === 1 ? 'operation' : 'operations'} to GitHub?`,
+    message: `Run ${count} ${count === 1 ? 'operation' : 'operations'} on GitHub?`,
     initialValue: false,
   })
 

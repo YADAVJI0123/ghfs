@@ -3,7 +3,6 @@ import type { RepositoryProvider } from '../types/provider'
 import type { PendingOp } from './types'
 import process from 'node:process'
 import { createRepositoryProvider } from '../providers/factory'
-import { describeAction, formatIssueNumber } from '../utils/format'
 import { ensureExecuteArtifacts } from './schema'
 import { loadExecuteSources } from './sources'
 
@@ -19,6 +18,7 @@ export interface ExecuteOptions {
   provider?: RepositoryProvider
   executeFilePath: string
   apply: boolean
+  selectedIndexes?: number[]
   nonInteractive: boolean
   continueOnError: boolean
   onPlan?: (ops: PendingOp[]) => void
@@ -29,7 +29,7 @@ export interface ExecuteOptions {
 
 export interface ExecuteReporterStartEvent {
   repo: string
-  mode: 'dry-run' | 'apply'
+  mode: 'report' | 'apply'
   planned: number
 }
 
@@ -58,6 +58,17 @@ export interface ExecuteReporter {
   onError?: (event: ExecuteReporterErrorEvent) => void
 }
 
+export class ExecuteCancelledError extends Error {
+  constructor() {
+    super('Execution cancelled')
+    this.name = 'ExecuteCancelledError'
+  }
+}
+
+export function isExecuteCancelledError(error: unknown): error is ExecuteCancelledError {
+  return error instanceof ExecuteCancelledError
+}
+
 export async function executePendingChanges(options: ExecuteOptions): Promise<ExecutionResult> {
   try {
     await ensureExecuteArtifacts(options.executeFilePath)
@@ -70,7 +81,7 @@ export async function executePendingChanges(options: ExecuteOptions): Promise<Ex
       return {
         runId: createRunId(),
         createdAt: new Date().toISOString(),
-        mode: 'dry-run',
+        mode: 'report',
         repo: options.repo,
         planned: 0,
         applied: 0,
@@ -83,13 +94,15 @@ export async function executePendingChanges(options: ExecuteOptions): Promise<Ex
     if (interactive && !options.prompts)
       throw new Error('Interactive execute prompts are unavailable. Use --non-interactive or provide prompts.')
 
-    const selected = interactive
-      ? await selectOperations(allOps, options.prompts!)
-      : allOps.map((op, index) => ({ op, index }))
+    const selected = Array.isArray(options.selectedIndexes)
+      ? selectOperationsByIndexes(allOps, options.selectedIndexes)
+      : interactive
+        ? await selectOperations(allOps, options.prompts!)
+        : allOps.map((op, index) => ({ op, index }))
 
     const runId = createRunId()
     const createdAt = new Date().toISOString()
-    const mode = options.apply ? 'apply' : 'dry-run'
+    const mode = options.apply ? 'apply' : 'report'
 
     options.reporter?.onStart?.({
       repo: options.repo,
@@ -118,7 +131,7 @@ export async function executePendingChanges(options: ExecuteOptions): Promise<Ex
       const result: ExecutionResult = {
         runId,
         createdAt,
-        mode: 'dry-run',
+        mode: 'report',
         repo: options.repo,
         planned: selected.length,
         applied: 0,
@@ -128,7 +141,7 @@ export async function executePendingChanges(options: ExecuteOptions): Promise<Ex
           action: op.action,
           number: op.number,
           status: 'planned',
-          message: describeAction(op.action, op.number, { repo: options.repo }),
+          message: describeExecutionAction(op.action, op.number),
         })),
       }
       options.reporter?.onComplete?.({ result })
@@ -138,7 +151,7 @@ export async function executePendingChanges(options: ExecuteOptions): Promise<Ex
     if (interactive) {
       const confirmed = await confirmApply(selected.length, options.prompts!)
       if (!confirmed)
-        throw new Error('Execution cancelled')
+        throw new ExecuteCancelledError()
     }
 
     const provider = options.provider ?? createRepositoryProvider({
@@ -153,7 +166,7 @@ export async function executePendingChanges(options: ExecuteOptions): Promise<Ex
 
     for (const { op, index } of selected) {
       try {
-        const target = await applyOperation(provider, op, options.repo)
+        const target = await applyOperation(provider, op)
         appliedIndexes.add(index)
         await persistRemainingOps(sources.writeRemaining, allOps, appliedIndexes)
         const detail: ExecutionResult['details'][number] = {
@@ -162,7 +175,7 @@ export async function executePendingChanges(options: ExecuteOptions): Promise<Ex
           number: op.number,
           target,
           status: 'applied',
-          message: describeAction(op.action, op.number, { repo: options.repo }),
+          message: describeExecutionAction(op.action, op.number),
         }
         details.push(detail)
         applied += 1
@@ -229,7 +242,7 @@ async function persistRemainingOps(writeRemaining: (remainingIndexes: Set<number
   await writeRemaining(remainingIndexes)
 }
 
-async function applyOperation(provider: RepositoryProvider, op: PendingOp, repo: string): Promise<IssueKind> {
+async function applyOperation(provider: RepositoryProvider, op: PendingOp): Promise<IssueKind> {
   const item = await provider.fetchItemSnapshot(op.number)
   const isPull = item.kind === 'pull'
 
@@ -301,22 +314,22 @@ async function applyOperation(provider: RepositoryProvider, op: PendingOp, repo:
       break
 
     case 'request-reviewers':
-      ensurePullAction(op.action, op.number, isPull, repo)
+      ensurePullAction(op.action, op.number, isPull)
       await provider.actionRequestReviewers(op.number, op.reviewers)
       break
 
     case 'remove-reviewers':
-      ensurePullAction(op.action, op.number, isPull, repo)
+      ensurePullAction(op.action, op.number, isPull)
       await provider.actionRemoveReviewers(op.number, op.reviewers)
       break
 
     case 'mark-ready-for-review':
-      ensurePullAction(op.action, op.number, isPull, repo)
+      ensurePullAction(op.action, op.number, isPull)
       await provider.actionMarkReadyForReview(op.number)
       break
 
     case 'convert-to-draft':
-      ensurePullAction(op.action, op.number, isPull, repo)
+      ensurePullAction(op.action, op.number, isPull)
       await provider.actionConvertToDraft(op.number)
       break
 
@@ -339,7 +352,7 @@ async function selectOperations(
 ): Promise<Array<{ op: PendingOp, index: number }>> {
   const selectedIndexes = await prompts.selectOperations(ops)
   if (!selectedIndexes)
-    throw new Error('Execution cancelled')
+    throw new ExecuteCancelledError()
 
   const selectedIndexesSet = new Set(selectedIndexes)
   return ops
@@ -354,7 +367,26 @@ async function confirmApply(count: number, prompts: ExecutePrompts): Promise<boo
   return result
 }
 
-function ensurePullAction(action: PendingOp['action'], number: number, isPull: boolean, repo: string): void {
+function selectOperationsByIndexes(
+  ops: PendingOp[],
+  selectedIndexes: number[],
+): Array<{ op: PendingOp, index: number }> {
+  const selectedSet = new Set<number>()
+  for (const index of selectedIndexes) {
+    if (Number.isInteger(index) && index >= 0 && index < ops.length)
+      selectedSet.add(index)
+  }
+
+  return ops
+    .map((op, index) => ({ op, index }))
+    .filter(item => selectedSet.has(item.index))
+}
+
+function ensurePullAction(action: PendingOp['action'], number: number, isPull: boolean): void {
   if (!isPull)
-    throw new Error(`Action ${action} requires ${formatIssueNumber(number, { repo, kind: 'pull' })} to be a pull request`)
+    throw new Error(`Action ${action} requires #${number} to be a pull request`)
+}
+
+function describeExecutionAction(action: string, number: number): string {
+  return `${action} #${number}`
 }

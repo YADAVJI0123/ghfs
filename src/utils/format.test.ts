@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   countNoun,
-  describeAction,
   formatDuration,
   formatIssueNumber,
   formatNumber,
@@ -13,17 +12,6 @@ import {
 
 afterEach(() => {
   vi.useRealTimers()
-})
-
-describe('describeAction', () => {
-  it('formats action and issue number', () => {
-    expect(describeAction('close', 42)).toBe('close #42')
-  })
-
-  it('renders terminal link when repo is provided', () => {
-    expect(describeAction('close', 42, { repo: 'owner/repo' }))
-      .toBe(`close ${formatTerminalLink('#42', 'https://github.com/owner/repo/issues/42')}`)
-  })
 })
 
 describe('formatIssueNumber', () => {
@@ -42,7 +30,6 @@ describe('toGitHubIssueUrl', () => {
     expect(toGitHubIssueUrl('owner/repo', 8, 'pull')).toBe('https://github.com/owner/repo/pull/8')
   })
 })
-
 describe('formatValue', () => {
   it('formats nullish values as empty strings', () => {
     expect(formatValue(undefined)).toBe('')
