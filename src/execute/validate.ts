@@ -36,7 +36,7 @@ export async function readAndValidateExecuteFileWithSource(path: string): Promis
   const raw = await readFile(path, 'utf8')
   let parsed: unknown
   try {
-    parsed = parse(raw)
+    parsed = parse(raw || '[]') || []
   }
   catch (error) {
     throw new Error(`Failed to parse execute YAML: ${(error as Error).message}`)

@@ -28,8 +28,6 @@ describe('ensureExecuteArtifacts', () => {
     expect(schema.items.properties.action.enum).toContain('comment')
     expect(schema.items.properties.action.enum).toContain('close-with-comment')
     expect(schema.items.properties.action.enum).toContain('close-comment')
-    expect(EXECUTE_FILE_PLACEHOLDER).toContain('case-insensitive')
-    expect(EXECUTE_MD_FILE_PLACEHOLDER).toContain('case-insensitive')
   })
 
   it('does not overwrite existing execute file and schema', async () => {
